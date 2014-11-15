@@ -13,7 +13,6 @@ using Emgu.CV.Structure;
 using Emgu.CV.GPU;
 using Emgu.CV.CvEnum;
 using Emgu.CV.Features2D;
-using Emgu.CV.Structure;
 using Emgu.CV.Util;
 
 namespace facerecognition
@@ -25,7 +24,7 @@ namespace facerecognition
         {
             int count = 0;
             int errors = 0;
-            foreach (var file in Directory.GetFiles(@"C:\Users\Maxime\Downloads\yalefaces\yalefaces", "*.gif"))
+            foreach (var file in Directory.GetFiles(@"C:\Users\Maxime\Downloads\yalefaces\yalefacesunique", "*.gif"))
             {
                 var fileName = Path.GetFileName(file);
                 var identification = Program.IdentifyAverageCommonKeypointFast(file);
@@ -39,14 +38,16 @@ namespace facerecognition
                 count++;
             }
 
-            Console.Out.WriteLine("\t\t\t\tResult = " + (100 - ((float)errors / (float)count)).ToString());
+            Console.Out.WriteLine("\t\t\t\tResult = " + (100.0f - (100.0f*((float)errors / (float)count))).ToString());
+
+            Debug.Print("\t\t\t\tResult = " + (100.0f - (100.0f * ((float)errors / (float)count))).ToString());
         }
 
         public static void testAverageKeypoint()
         {
             int count = 0;
             int errors = 0;
-            foreach (var file in Directory.GetFiles(@"C:\Users\Maxime\Downloads\yalefaces\yalefaces", "*.gif"))
+            foreach (var file in Directory.GetFiles(@"C:\Users\Maxime\Downloads\yalefaces\yalefacesunique", "*.gif"))
             {
                 var fileName = Path.GetFileName(file);
                 var identification = Program.IdentifyAverageCommonKeypoint(file);
@@ -60,7 +61,8 @@ namespace facerecognition
                 count++;
             }
 
-            Console.Out.WriteLine("\t\t\t\tResult = " + (100 - ((float)errors / (float)count)).ToString());
+            Console.Out.WriteLine("\t\t\t\tResult = " + (100 - (100 * ((float)errors / (float)count))).ToString());
+            Debug.Print("\t\t\t\tResult = " + (100.0f - (100.0f * ((float)errors / (float)count))).ToString());
         }
 
         public static void testFullDatabaseFast()
@@ -166,7 +168,7 @@ namespace facerecognition
             int error = 0;
 
             string folderPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
-            using (SURFDetector surfCPU = new SURFDetector(500, false))
+            using (SURFDetector surfCPU = new SURFDetector(Program.HESSIAN_TRESHOLD, false))
             {
                 foreach (var fileToIdentify in Directory.GetFiles(Path.Combine(folderPath, Program.trainingDataset), "*.gif"))
                 {
