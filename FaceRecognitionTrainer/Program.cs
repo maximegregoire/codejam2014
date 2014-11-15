@@ -25,7 +25,7 @@ namespace FaceRecognitionTrainer
 
             var subjectPhotos = GetSubjectPhotos(trainingDatasetFolder);
 
-
+            //Serialize objects
             foreach (var group in subjectPhotos.GroupBy(pair => pair.Key))
             {
                 int subjectId = group.Key;
@@ -41,6 +41,7 @@ namespace FaceRecognitionTrainer
                 ModelAnalysisDataSerializer.WriteModelAnalysisData(databaseFolder, modelAnalysis);
             }
 
+            //Deserialize objects
             foreach (var modelData in ModelAnalysisDataSerializer.GetModelAnalyses(databaseFolder))
             {
                 int subjectId = modelData.subjectId;
