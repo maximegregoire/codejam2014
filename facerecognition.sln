@@ -1,9 +1,13 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2013
-VisualStudioVersion = 12.0.30501.0
+VisualStudioVersion = 12.0.31101.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "facerecognition", "facerecognition\facerecognition.csproj", "{B70EBA7A-6B14-4812-8854-33AF1984E909}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FaceRecognitionTrainer", "FaceRecognitionTrainer\FaceRecognitionTrainer.csproj", "{E96EB489-A262-4D4B-AD88-7FDE56B8BA54}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ModelAnalysis", "ModelAnalysis\ModelAnalysis.csproj", "{F6335414-76A4-4DAA-8DB2-52F4EE28DCDE}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +19,14 @@ Global
 		{B70EBA7A-6B14-4812-8854-33AF1984E909}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B70EBA7A-6B14-4812-8854-33AF1984E909}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B70EBA7A-6B14-4812-8854-33AF1984E909}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E96EB489-A262-4D4B-AD88-7FDE56B8BA54}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E96EB489-A262-4D4B-AD88-7FDE56B8BA54}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E96EB489-A262-4D4B-AD88-7FDE56B8BA54}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E96EB489-A262-4D4B-AD88-7FDE56B8BA54}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F6335414-76A4-4DAA-8DB2-52F4EE28DCDE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F6335414-76A4-4DAA-8DB2-52F4EE28DCDE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F6335414-76A4-4DAA-8DB2-52F4EE28DCDE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F6335414-76A4-4DAA-8DB2-52F4EE28DCDE}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

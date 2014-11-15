@@ -5,3 +5,9 @@ C:\CodeJam\facerecognition\bin\Debug\facerecognition.exe
 C:\CodeJam\facerecognition\bin\Debug\facerecognition.pdb
 C:\CodeJam\facerecognition\obj\Debug\facerecognition.exe
 C:\CodeJam\facerecognition\obj\Debug\facerecognition.pdb
+C:\Users\Admin\Documents\GitHub\codejam2014\facerecognition\bin\Debug\facerecognition.exe.config
+C:\Users\Admin\Documents\GitHub\codejam2014\facerecognition\bin\Debug\facerecognition.exe
+C:\Users\Admin\Documents\GitHub\codejam2014\facerecognition\bin\Debug\facerecognition.pdb
+C:\Users\Admin\Documents\GitHub\codejam2014\facerecognition\obj\Debug\facerecognition.csprojResolveAssemblyReference.cache
+C:\Users\Admin\Documents\GitHub\codejam2014\facerecognition\obj\Debug\facerecognition.exe
+C:\Users\Admin\Documents\GitHub\codejam2014\facerecognition\obj\Debug\facerecognition.pdb
