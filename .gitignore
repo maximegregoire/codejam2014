@@ -2,3 +2,4 @@
 machines/
 **/bin/**/*
 **/obj/**/*
+**/obj

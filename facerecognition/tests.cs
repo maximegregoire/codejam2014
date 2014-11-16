@@ -26,18 +26,15 @@ namespace facerecognition
 
             Stopwatch stopwatch = new Stopwatch();
             long totalTime = 0;
-            //Program.database = Program.ExtractDatabase(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location));
 
-            foreach (var file in Directory.GetFiles(@"C:\CodeJam\photos"))
+            foreach (var file in Directory.GetFiles(@"C:\Users\Admin\Documents\GitHub\codejam2014_2\codejam2014\photos"))
             {
                 var fileName = Path.GetFileName(file);
 
-
-
-                //Program.database = Program.ExtractDatabase(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location));
+                
                 stopwatch.Restart();
-                //var identification = Program.IdentifyAverageCommonKeypointFast(file, false);
-                var identification = facerecognition.IdentifyFaceWithDataset(file, @"C:\CodeJam\photos");
+               
+                var identification = facerecognition.IdentifyFaceWithDataset(file, @"C:\Users\Admin\Documents\GitHub\codejam2014_2\codejam2014\photos");
                 stopwatch.Stop();
                 long t2 = stopwatch.ElapsedMilliseconds;
                 totalTime += t2;
@@ -65,18 +62,15 @@ namespace facerecognition
 
             Stopwatch stopwatch = new Stopwatch();
             long totalTime = 0;
-            //Program.database = Program.ExtractDatabase(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location));
+           
             string folderPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
 
-            foreach (var file in Directory.GetFiles(@"C:\Users\Maxime\Downloads\yalefaces\yalefacesunique", "*.gif"))
+            foreach (var file in Directory.GetFiles(@"C:\Users\Admin\Documents\GitHub\codejam2014_2\codejam2014\unique", "*.gif"))
             {
                 var fileName = Path.GetFileName(file);
 
-                
-                
-                //Program.database = Program.ExtractDatabase(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location));
                 stopwatch.Restart();
-                //var identification = Program.IdentifyAverageCommonKeypointFast(file, false);
+ 
                 var identification = facerecognition.IdentifyFaceWithDataset(file, Path.Combine(folderPath, facerecognition.trainingDataset));
                 stopwatch.Stop();
                 long t2 = stopwatch.ElapsedMilliseconds;
@@ -97,29 +91,6 @@ namespace facerecognition
             Debug.Print("\t\t\t\tResult = " + (100.0f - (100.0f * ((float)errors / (float)count))).ToString());
             Debug.Print("\t\t\t\tTime = " + (float)((float)(totalTime) / (float)(count)));
         }
-
-        /*
-        public static void testAverageKeypoint()
-        {
-            int count = 0;
-            int errors = 0;
-            foreach (var file in Directory.GetFiles(@"C:\Users\Maxime\Downloads\yalefaces\yalefacesunique", "*.gif"))
-            {
-                var fileName = Path.GetFileName(file);
-                var identification = facerecognition.IdentifyAverageCommonKeypoint(file);
-                Console.Out.WriteLine(fileName + " = " + identification.ToString());
-                if (Convert.ToInt32(fileName.Substring(7, 2)) != identification)
-                {
-                    Console.Out.WriteLine("\t\t\t\tERROR");
-                    errors++;
-                }
-
-                count++;
-            }
-
-            Console.Out.WriteLine("\t\t\t\tResult = " + (100 - (100 * ((float)errors / (float)count))).ToString());
-            Debug.Print("\t\t\t\tResult = " + (100.0f - (100.0f * ((float)errors / (float)count))).ToString());
-        }*/
 
         public static void testFullDatabaseFast()
         {
@@ -218,54 +189,5 @@ namespace facerecognition
             Console.Out.WriteLine("\n\n\n RESULTS = " + (100 - (((float)(error) / (float)(results)) * 100)));
         }
 
-        /*
-        public static void testSubset()
-        {
-            int results = 0;
-            int error = 0;
-
-            string folderPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
-            using (SURFDetector surfCPU = new SURFDetector(facerecognition.HESSIAN_TRESHOLD, false))
-            {
-                foreach (var fileToIdentify in Directory.GetFiles(Path.Combine(folderPath, facerecognition.trainingDataset), "*.gif"))
-                {
-                    var unknownImage = new Image<Gray, byte>(fileToIdentify);
-                    int maxKeyPoints = 0;
-                    string maxKeyPointsImage = string.Empty;
-
-
-                    VectorOfKeyPoint unknownKeyPoints = surfCPU.DetectKeyPointsRaw(unknownImage, null);
-                    Matrix<float> unknownDescriptors = surfCPU.ComputeDescriptorsRaw(unknownImage, null, unknownKeyPoints);
-
-
-                    foreach (var dbFile in Directory.GetFiles(Path.Combine(folderPath, facerecognition.trainingDataset), "*.gif").Where(f => f != fileToIdentify))
-                    {
-                        var dbImage = new Image<Gray, byte>(dbFile);
-                        VectorOfKeyPoint dbKeyPoints = surfCPU.DetectKeyPointsRaw(dbImage, null);
-                        Matrix<float> dbDescriptors = surfCPU.ComputeDescriptorsRaw(dbImage, null, dbKeyPoints);
-
-                        int computedKeypoints = facerecognition.GetCommonKeypoints(unknownDescriptors, unknownKeyPoints, dbDescriptors, dbKeyPoints);
-                        if (computedKeypoints > maxKeyPoints)
-                        {
-                            maxKeyPoints = computedKeypoints;
-                            maxKeyPointsImage = dbFile;
-                        }
-                    }
-
-
-
-                    results++;
-                    if (!Path.GetFileName(fileToIdentify).Split('_')[0].Equals(Path.GetFileName(maxKeyPointsImage).Split('_')[0]))
-                    {
-                        Console.Out.WriteLine("ERROR");
-                        error++;
-                    }
-
-                    Console.Out.WriteLine("Results for model " + Path.GetFileName(fileToIdentify) + " = " + Path.GetFileName(maxKeyPointsImage));
-                }
-            }
-
-            Console.Out.WriteLine("\n\n\n RESULTS = " + (100 - (((float)(error) / (float)(results)) * 100)));
-        }*/
     }
 }
