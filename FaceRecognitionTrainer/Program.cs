@@ -44,7 +44,7 @@ namespace FaceRecognitionTrainer
 
                 var subjectModel = analyzeModelMethod.Invoke(modelAnalyzer, new object[]{subjectId, group.SelectMany(el => el.Value).ToArray()});
 
-
+            
                 ModelAnalysisDataSerializer.WriteModelAnalysisData(databaseFolder, subjectModel, subjectId);
             }
         }

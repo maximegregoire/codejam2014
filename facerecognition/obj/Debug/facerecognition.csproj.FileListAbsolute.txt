@@ -11,3 +11,7 @@ C:\Users\Admin\Documents\GitHub\codejam2014\facerecognition\bin\Debug\facerecogn
 C:\Users\Admin\Documents\GitHub\codejam2014\facerecognition\obj\Debug\facerecognition.csprojResolveAssemblyReference.cache
 C:\Users\Admin\Documents\GitHub\codejam2014\facerecognition\obj\Debug\facerecognition.exe
 C:\Users\Admin\Documents\GitHub\codejam2014\facerecognition\obj\Debug\facerecognition.pdb
+C:\CodeJam\facerecognition\bin\Debug\ModelAnalysisSerializer.dll
+C:\CodeJam\facerecognition\bin\Debug\ModelAnalysisSerializer.pdb
+C:\Users\Admin\Documents\GitHub\codejam2014\facerecognition\bin\Debug\ModelAnalysis.dll
+C:\Users\Admin\Documents\GitHub\codejam2014\facerecognition\bin\Debug\ModelAnalysis.pdb
