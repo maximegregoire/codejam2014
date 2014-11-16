@@ -1,2 +1,3 @@
 .vagrant/
 machines/
+/facerecognition/bin/Debug/*
