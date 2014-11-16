@@ -25,8 +25,6 @@ using Emgu.CV.Features2D;
 using Emgu.CV.Util;
 using Emgu.CV.Flann;
 
-using ModelAnalysis;
-
 namespace facerecognition
 {
     /// <summary>
@@ -100,6 +98,11 @@ namespace facerecognition
         public const float IMAGE_SCALING_FACTOR = 0.625f;
 
         /// <summary>
+        /// Threshold for the amout of significant keypoint matches
+        /// </summary>
+        public const int SIGNIFICANT_KEYPOINT_THRESHOLD = 4;
+
+        /// <summary>
         /// The entry point of the code
         /// </summary>
         /// <param name="args">The command line argument(s)</param>
@@ -126,9 +129,10 @@ namespace facerecognition
                 }
 
                 IdentifyFaceWithDataset(args[0], trainingDataset);
-            }*/
+            }
+             * */
 
-            Tests.testAverageKeypointFast();
+            Tests.testRecognitionYale();
         }
 
 
@@ -259,9 +263,6 @@ namespace facerecognition
             Matrix<int> indices;
             Matrix<byte> mask;
 
-            FastDetector fastCPU = new FastDetector(FAST_TRESHOLD_PROCESSING, NON_MAXIMAL_SUPRESSION);
-            BriefDescriptorExtractor descriptor = new BriefDescriptorExtractor();
-
             //Try to match the features
             BruteForceMatcher<Byte> matcher = new BruteForceMatcher<Byte>(BFM_OPTION);
             matcher.Add(unknownDescriptors);
@@ -281,7 +282,7 @@ namespace facerecognition
             }
 
             int numOfKeypoints = CvInvoke.cvCountNonZero(mask);
-            if (numOfKeypoints >= 4)
+            if (numOfKeypoints >= SIGNIFICANT_KEYPOINT_THRESHOLD)
             {
                 return Features2DToolbox.VoteForSizeAndOrientation(unknownImageKeyPoints, dbImageKeyPoints, indices, mask, SCALE_INCREMENT, ROTATION_BINS);
             }
