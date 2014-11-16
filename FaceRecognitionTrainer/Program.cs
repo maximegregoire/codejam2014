@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
@@ -20,40 +21,31 @@ namespace FaceRecognitionTrainer
             string currentFolder = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
             string trainingDatasetFolder = Path.Combine(currentFolder, "training dataset");
             string databaseFolder = Path.Combine(currentFolder, "Database");
+            string assemblyName = System.Reflection.Assembly.GetAssembly(typeof(ModelAnalysisData<float>)).GetName().Name;
+            string typeName = "SURF500";
+
+            if (args.Length > 0) trainingDatasetFolder = args[0];
+            if (args.Length > 1) databaseFolder = args[1];
+            if (args.Length > 2) typeName = args[2];
+            
+            
+            var modelAnalyzer = Activator.CreateInstance(assemblyName, "ModelAnalysis.ModelAnalyzers." + typeName).Unwrap();
+
+            Type modelAnalyzerType = modelAnalyzer.GetType();
+            MethodInfo analyzeModelMethod = modelAnalyzerType.GetMethod("AnalyzeModel");
 
             Directory.CreateDirectory(databaseFolder);
 
             var subjectPhotos = GetSubjectPhotos(trainingDatasetFolder);
 
-            //Serialize objects
             foreach (var group in subjectPhotos.GroupBy(pair => pair.Key))
             {
                 int subjectId = group.Key;
-                List<PhotoAnalysisData> photoAnalyses = new List<PhotoAnalysisData>();
-                
-                foreach (var photo in group.SelectMany(entry => entry.Value))
-                {
-                    photoAnalyses.Add(AnalyzePhoto(photo));
-                }
 
-                var modelAnalysis = new ModelAnalysisData { photoAnalyses = photoAnalyses.ToArray(), subjectId = subjectId };
+                var subjectModel = analyzeModelMethod.Invoke(modelAnalyzer, new object[]{subjectId, group.SelectMany(el => el.Value).ToArray()});
 
-                ModelAnalysisDataSerializer.WriteModelAnalysisData(databaseFolder, modelAnalysis);
-            }
 
-            //Deserialize objects
-            foreach (var modelData in ModelAnalysisDataSerializer.GetModelAnalyses(databaseFolder))
-            {
-                int subjectId = modelData.subjectId;
-                foreach (var photo in modelData.photoAnalyses)
-                {
-                    var keypoints = new VectorOfKeyPoint();
-                    keypoints.Push(photo.keypoints);
-
-                    var descriptors = photo.descriptors;
-
-                    //Do something here
-                }
+                ModelAnalysisDataSerializer.WriteModelAnalysisData(databaseFolder, subjectModel, subjectId);
             }
         }
 
@@ -70,17 +62,6 @@ namespace FaceRecognitionTrainer
             }
 
             return subjectPhotos;
-        }
-
-        static PhotoAnalysisData AnalyzePhoto(string photoPath)
-        {
-            SURFDetector surfCPU = new SURFDetector(500, false);
-            Image<Gray, Byte> modelImage = new Image<Gray, byte>(photoPath);
-
-            VectorOfKeyPoint modelKeyPoints = surfCPU.DetectKeyPointsRaw(modelImage, null);
-            Matrix<float> modelDescriptors = surfCPU.ComputeDescriptorsRaw(modelImage, null, modelKeyPoints);
-
-            return new PhotoAnalysisData { keypoints = modelKeyPoints.ToArray().OrderBy(k => k.Size).ToArray(), descriptors = modelDescriptors };
         }
     }
 }

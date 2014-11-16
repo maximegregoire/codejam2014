@@ -10,43 +10,43 @@ namespace ModelAnalysis
 {
     public class ModelAnalysisDataSerializer
     {
-        public static ModelAnalysisData ReadModelAnalysisData(string databasePath, int subjectId)   
+        public static ModelAnalysisData<TDepth> ReadModelAnalysisData<TDepth>(string databasePath, int subjectId) where TDepth : new()
         {
             string subjectAnalysisDataPath = Path.Combine(databasePath, Convert.ToString(subjectId) + ".xml");
-            return ReadModelAnalysisData(subjectAnalysisDataPath);
+            return ReadModelAnalysisData<TDepth>(subjectAnalysisDataPath);
         }
 
-        public static ModelAnalysisData ReadModelAnalysisData(string dataPath)
+        public static ModelAnalysisData<TDepth> ReadModelAnalysisData<TDepth>(string dataPath) where TDepth : new()
         {
-            var xml = new XmlSerializer(typeof(ModelAnalysisData));
+            var xml = new XmlSerializer(typeof(ModelAnalysisData<TDepth>));
 
-            ModelAnalysisData data = null;
+            ModelAnalysisData<TDepth> data = null;
 
             using (var file = new StreamReader(dataPath))
             {
-                data = (ModelAnalysisData)xml.Deserialize(file);
+                data = (ModelAnalysisData<TDepth>)xml.Deserialize(file);
             }
 
             return data;
         }
 
-        public static void WriteModelAnalysisData(string databasePath, ModelAnalysisData data)
+        public static void WriteModelAnalysisData(string databasePath, Object data, int subjectId)
         {
             var xml = new XmlSerializer(data.GetType());
 
-            using (var file = new StreamWriter(Path.Combine(databasePath, Convert.ToString(data.subjectId)) + ".xml", false))
+            using (var file = new StreamWriter(Path.Combine(databasePath, Convert.ToString(subjectId)) + ".xml", false))
             {
                 xml.Serialize(file, data);
             }
         }
 
-        public static IEnumerable<ModelAnalysisData> GetModelAnalyses(string databasePath)
+        public static IEnumerable<ModelAnalysisData<TDepth>> GetModelAnalyses<TDepth>(string databasePath) where TDepth : new()
         {
             Dictionary<int, List<string>> subjectPhotos = new Dictionary<int, List<string>>();
 
             foreach (var file in Directory.GetFiles(databasePath, "*.xml"))
             {
-                yield return ReadModelAnalysisData(file);
+                yield return ReadModelAnalysisData<TDepth>(file);
             }
         }
     }

@@ -6,9 +6,9 @@ using System.Threading.Tasks;
 
 namespace ModelAnalysis
 {
-    public class ModelAnalysisData
+    public class ModelAnalysisData<TDepth> where TDepth : new()
     {
         public int subjectId;
-        public PhotoAnalysisData[] photoAnalyses;
+        public PhotoAnalysisData<TDepth>[] photoAnalyses;
     }
 }
