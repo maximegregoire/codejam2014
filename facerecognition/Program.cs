@@ -26,12 +26,105 @@ namespace facerecognition
         static void Main(string[] args)
         {
             string filePath = GetFilePath(args[0]);
-
-            //long time;
-            Tests.testSubsetFast();
+            Tests.testAverageKeypoint();
+            //Tests.testSubsetFast();
 
             //testFullDatabase();
         }
+
+        public static int IdentifyAverageCommonKeypoint(string filename)
+        {
+            string folderPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
+            var dbFiles = Directory.GetFiles(Path.Combine(folderPath, Program.trainingDataset), "*.gif");
+            var dictionary = new Dictionary<int, Person>();
+
+            using (SURFDetector surfCPU = new SURFDetector(500, false))
+            {
+                var unknownImage = new Image<Gray, byte>(filename);
+
+                VectorOfKeyPoint unknownKeyPoints = surfCPU.DetectKeyPointsRaw(unknownImage, null);
+                Matrix<float> unknownDescriptors = surfCPU.ComputeDescriptorsRaw(unknownImage, null, unknownKeyPoints);
+
+                foreach (var dbFile in dbFiles)
+                {
+                    var dbImage = new Image<Gray, byte>(dbFile);
+
+
+
+                    VectorOfKeyPoint dbKeyPoints = surfCPU.DetectKeyPointsRaw(dbImage, null);
+                    Matrix<float> dbDescriptors = surfCPU.ComputeDescriptorsRaw(dbImage, null, dbKeyPoints);
+
+                    int computedKeypoints = Program.GetCommonKeypoints(unknownDescriptors, unknownKeyPoints, dbDescriptors, dbKeyPoints);
+
+                    //TODO: handle possible error from parsing
+                    int subjectId = Convert.ToInt32(Path.GetFileName(dbFile.Split('_')[0]));
+
+                    if (!dictionary.ContainsKey(subjectId))
+                    {
+                        dictionary.Add(subjectId, new Person(subjectId));
+                    }
+
+                    var person = new Person(0);
+                    if (!dictionary.TryGetValue(subjectId, out person))
+                    {
+                        throw new InvalidOperationException("something went wrong with the dictionary");
+                    }
+
+                    person.AddComparison(computedKeypoints);
+
+                }
+
+                return dictionary.Aggregate((l, r) => l.Value.AverageCommonKeypoints > r.Value.AverageCommonKeypoints ? l : r).Key;
+            }
+        }
+
+        public static int IdentifyAverageCommonKeypointFast(string filename)
+        {
+            string folderPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
+            var dbFiles = Directory.GetFiles(Path.Combine(folderPath, Program.trainingDataset), "*.gif");
+            var dictionary = new Dictionary<int, Person>();
+
+            using (FastDetector fastCPU = new FastDetector(10, true))
+            using (BriefDescriptorExtractor descriptor = new BriefDescriptorExtractor())
+            {
+                var unknownImage = new Image<Gray, byte>(filename);
+
+                VectorOfKeyPoint unknownKeyPoints = fastCPU.DetectKeyPointsRaw(unknownImage, null);
+                Matrix<Byte> unknownDescriptors = descriptor.ComputeDescriptorsRaw(unknownImage, null, unknownKeyPoints);
+
+                foreach (var dbFile in dbFiles)
+                {
+                    var dbImage = new Image<Gray, byte>(dbFile);
+
+                    
+                    
+                    VectorOfKeyPoint dbKeyPoints = fastCPU.DetectKeyPointsRaw(dbImage, null);
+                    Matrix<Byte> dbDescriptors = descriptor.ComputeDescriptorsRaw(dbImage, null, dbKeyPoints);
+
+                    int computedKeypoints = Program.GetCommonKeypointsFast(unknownDescriptors, unknownKeyPoints, dbDescriptors, dbKeyPoints);
+
+                    //TODO: handle possible error from parsing
+                    int subjectId = Convert.ToInt32(Path.GetFileName(dbFile.Split('_')[0]));
+
+                    if (!dictionary.ContainsKey(subjectId))
+                    {
+                        dictionary.Add(subjectId, new Person(subjectId));
+                    }
+
+                    var person = new Person(0);
+                    if(!dictionary.TryGetValue(subjectId, out person))
+                    {
+                        throw new InvalidOperationException("something went wrong with the dictionary");
+                    }
+
+                    person.AddComparison(computedKeypoints);
+                    
+                }
+
+                return dictionary.Aggregate((l, r) => l.Value.AverageCommonKeypoints > r.Value.AverageCommonKeypoints ? l : r).Key;
+            }
+        }
+        
         
         static string GetFilePath(string arg)
         {

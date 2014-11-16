@@ -21,6 +21,48 @@ namespace facerecognition
     class Tests
     {
 
+        public static void testAverageKeypointFast()
+        {
+            int count = 0;
+            int errors = 0;
+            foreach (var file in Directory.GetFiles(@"C:\Users\Maxime\Downloads\yalefaces\yalefaces", "*.gif"))
+            {
+                var fileName = Path.GetFileName(file);
+                var identification = Program.IdentifyAverageCommonKeypointFast(file);
+                Console.Out.WriteLine(fileName + " = " + identification.ToString());
+                if (Convert.ToInt32(fileName.Substring(7, 2)) != identification)
+                {
+                    Console.Out.WriteLine("\t\t\t\tERROR");
+                    errors++;
+                }
+
+                count++;
+            }
+
+            Console.Out.WriteLine("\t\t\t\tResult = " + (100 - ((float)errors / (float)count)).ToString());
+        }
+
+        public static void testAverageKeypoint()
+        {
+            int count = 0;
+            int errors = 0;
+            foreach (var file in Directory.GetFiles(@"C:\Users\Maxime\Downloads\yalefaces\yalefaces", "*.gif"))
+            {
+                var fileName = Path.GetFileName(file);
+                var identification = Program.IdentifyAverageCommonKeypoint(file);
+                Console.Out.WriteLine(fileName + " = " + identification.ToString());
+                if (Convert.ToInt32(fileName.Substring(7, 2)) != identification)
+                {
+                    Console.Out.WriteLine("\t\t\t\tERROR");
+                    errors++;
+                }
+
+                count++;
+            }
+
+            Console.Out.WriteLine("\t\t\t\tResult = " + (100 - ((float)errors / (float)count)).ToString());
+        }
+
         public static void testFullDatabaseFast()
         {
             int results = 0;
