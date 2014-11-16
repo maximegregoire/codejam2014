@@ -1,5 +1,6 @@
 .vagrant/
 machines/
 **/bin/**/*
+**/release/**/*
 **/obj/**/*
 **/obj
