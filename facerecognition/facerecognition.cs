@@ -82,19 +82,22 @@ namespace facerecognition
         /// <summary>
         /// Amount of pixel to chop off both sides of the image
         /// </summary>
-        public const int CROP_WIDTH = 0;
+        public const int CROP_WIDTH = 10;
 
         /// <summary>
-        /// Amount of pixel to chop off the top and bottom of the image
+        /// Amount of pixel to chop off of the bottom of the image
         /// </summary>
         public const int CROP_HEIGHT_BOTTOM = 0;
 
+        /// <summary>
+        /// Amount of pixel to chop off of the top of the image
+        /// </summary>
         public const int CROP_HEIGHT_TOP = 0;
 
-        public const float IMAGE_SCALING_FACTOR = 0.65f;
-
-        //public const int POINT_RESPONSE_LOWER_SURF = 3000;
-        //public const int HESSIAN_TRESH = 300;
+        /// <summary>
+        /// Amount by which the image will be scaled (1 = original size, 0.5 = 50%, 2 = 200%, etc..)
+        /// </summary>
+        public const float IMAGE_SCALING_FACTOR = 0.625f;
 
         /// <summary>
         /// The entry point of the code
@@ -102,24 +105,31 @@ namespace facerecognition
         /// <param name="args">The command line argument(s)</param>
         static void Main(string[] args)
         {
-            //if (args.Length == 0)
-            //{
-            //    Console.Out.WriteLine("You must use this program with a picture in the following form:");
-            //    Console.Out.WriteLine("facerecognition subjectID_imageID.gif");
-            //}
-            //else
-            //{
-            //    if (!File.Exists(args[0]))
-            //    {
-            //        Console.Out.Write("The specified file cannot be found in the current folder");
-            //        return;
-            //    }
+            if (args.Length == 0)
+            {
+                Console.Out.WriteLine("You must use this program with a picture in the following form:");
+                Console.Out.WriteLine("facerecognition subjectID_imageID.gif");
+            }
+            else
+            {
+                if (!File.Exists(args[0]))
+                {
+                    Console.Out.WriteLine("The specified file cannot be found in the current folder.");
+                    return;
+                }
 
-            //    Console.Out.WriteLine(IdentifyFaceWithDataset(args[0], trainingDataset));
-            //}
+                if (!IsImage(args[0]))
+                {
+                    Console.Out.WriteLine("The specified file is not an image.");
+                    return;
+                }
 
-            //Tests.testAverageKeypointFastOnRealPhotos();
-            Tests.testAverageKeypointFast();
+                //Console.Out.WriteLine(IdentifyFaceWithDataset(args[0], trainingDataset));
+                IdentifyFaceWithDataset(args[0], trainingDataset);
+            }
+
+           // Tests.testAverageKeypointFastOnRealPhotos();
+            //Tests.testAverageKeypointFast();
         }
 
         /*
@@ -173,6 +183,18 @@ namespace facerecognition
         }*/
 
         /// <summary>
+        /// Checks that a given file is an image
+        /// </summary>
+        /// <param name="filePath">The path of the file</param>
+        /// <returns>True if it's an image, false otherwise</returns>
+        public static bool IsImage(string filePath)
+        {
+            return filePath.EndsWith(".gif") || filePath.EndsWith(".bmp") || filePath.EndsWith(".png") ||
+                filePath.EndsWith(".jpg") || filePath.EndsWith(".GIF") || filePath.EndsWith(".BMP") || 
+                filePath.EndsWith(".PNG") || filePath.EndsWith(".JPG");
+        }
+
+        /// <summary>
         /// Give a cropped and scalled image of a given picture
         /// </summary>
         /// <param name="picturePath">The path of the picture</param>
@@ -218,7 +240,7 @@ namespace facerecognition
             FastDetector fastCPU = new FastDetector(FAST_TRESHOLD_PROCESSING, NON_MAXIMAL_SUPRESSION);
             using (var descriptor = new BriefDescriptorExtractor())
             {
-                var unknownImage = CropAndScalePicture(filePath);
+                var unknownImage = TransformPicture(filePath);
 
                 unknownKeyPoints = fastCPU.DetectKeyPointsRaw(unknownImage, null);
                 unknownDescriptors = descriptor.ComputeDescriptorsRaw(unknownImage, null, unknownKeyPoints);
@@ -233,7 +255,7 @@ namespace facerecognition
                         continue;
                     }
 
-                    var dbImage = CropAndScalePicture(dbFile);
+                    var dbImage = TransformPicture(dbFile);
 
 
                     VectorOfKeyPoint dbKeyPoints = new VectorOfKeyPoint();

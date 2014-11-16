@@ -19,7 +19,6 @@ namespace facerecognition
 {
     class Tests
     {
-
         public static void testAverageKeypointFastOnRealPhotos()
         {
             int count = 0;
@@ -69,7 +68,7 @@ namespace facerecognition
             //Program.database = Program.ExtractDatabase(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location));
             string folderPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
 
-            foreach (var file in Directory.GetFiles(@"C:\Users\Maxime\Downloads\yalefaces\yalefaces", "*.gif"))
+            foreach (var file in Directory.GetFiles(@"C:\Users\Maxime\Downloads\yalefaces\yalefacesunique", "*.gif"))
             {
                 var fileName = Path.GetFileName(file);
 
