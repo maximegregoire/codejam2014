@@ -13,34 +13,43 @@ using Emgu.CV.Structure;
 using Emgu.CV.GPU;
 using Emgu.CV.CvEnum;
 using Emgu.CV.Features2D;
-using Emgu.CV.Structure;
 using Emgu.CV.Util;
 
 namespace facerecognition
 {
     class Program
     {
+        public const int HESSIAN_TRESHOLD = 750;
+
+        public const int FAST_TRESHOLD = 2;
+
+        public const bool NON_MAXIMAL_SUPRESSION = true;
 
         public const string trainingDataset = "training dataset";
 
         static void Main(string[] args)
         {
-            string filePath = GetFilePath(args[0]);
-            Tests.testAverageKeypoint();
-            //Tests.testSubsetFast();
-
-            //testFullDatabase();
+            if (args.Length == 0)
+            {
+                Console.Out.WriteLine("You must use this program with a picture in the following form:");
+                Console.Out.WriteLine("facerecogntion subjectID_imageID.gif");
+            }
+            else
+            {
+                string filePath = GetFilePath(args[0]);
+                Console.Out.WriteLine(IdentifyAverageCommonKeypointFast(filePath));
+            }
         }
 
-        public static int IdentifyAverageCommonKeypoint(string filename)
+        public static int IdentifyAverageCommonKeypoint(string filePath)
         {
             string folderPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
             var dbFiles = Directory.GetFiles(Path.Combine(folderPath, Program.trainingDataset), "*.gif");
             var dictionary = new Dictionary<int, Person>();
 
-            using (SURFDetector surfCPU = new SURFDetector(500, false))
+            using (SURFDetector surfCPU = new SURFDetector(HESSIAN_TRESHOLD, false))
             {
-                var unknownImage = new Image<Gray, byte>(filename);
+                var unknownImage = new Image<Gray, byte>(filePath);
 
                 VectorOfKeyPoint unknownKeyPoints = surfCPU.DetectKeyPointsRaw(unknownImage, null);
                 Matrix<float> unknownDescriptors = surfCPU.ComputeDescriptorsRaw(unknownImage, null, unknownKeyPoints);
@@ -78,16 +87,16 @@ namespace facerecognition
             }
         }
 
-        public static int IdentifyAverageCommonKeypointFast(string filename)
+        public static int IdentifyAverageCommonKeypointFast(string filePath)
         {
             string folderPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
             var dbFiles = Directory.GetFiles(Path.Combine(folderPath, Program.trainingDataset), "*.gif");
             var dictionary = new Dictionary<int, Person>();
 
-            using (FastDetector fastCPU = new FastDetector(10, true))
-            using (BriefDescriptorExtractor descriptor = new BriefDescriptorExtractor())
+            using (FastDetector fastCPU = new FastDetector(FAST_TRESHOLD, NON_MAXIMAL_SUPRESSION))
+            using (var descriptor = new BriefDescriptorExtractor())
             {
-                var unknownImage = new Image<Gray, byte>(filename);
+                var unknownImage = new Image<Gray, byte>(filePath);
 
                 VectorOfKeyPoint unknownKeyPoints = fastCPU.DetectKeyPointsRaw(unknownImage, null);
                 Matrix<Byte> unknownDescriptors = descriptor.ComputeDescriptorsRaw(unknownImage, null, unknownKeyPoints);
@@ -142,7 +151,7 @@ namespace facerecognition
 
         public static int GetCommonKeypointsOriginal(Image<Gray, Byte> imageToIdentify, Image<Gray, byte> databaseImage)
         {
-            SURFDetector surfCPU = new SURFDetector(500, false);
+            SURFDetector surfCPU = new SURFDetector(HESSIAN_TRESHOLD, false);
             VectorOfKeyPoint modelKeyPoints;
             VectorOfKeyPoint observedKeyPoints;
             Matrix<int> indices;
@@ -180,7 +189,7 @@ namespace facerecognition
 
         public static int GetCommonKeypointsFast(Matrix<Byte> unknownDescriptors, VectorOfKeyPoint unknownImageKeyPoints, Matrix<Byte> dbDescriptors, VectorOfKeyPoint dbImageKeyPoints)
         {
-            FastDetector fastCPU = new FastDetector(10, true);
+            FastDetector fastCPU = new FastDetector(FAST_TRESHOLD, NON_MAXIMAL_SUPRESSION);
             Matrix<int> indices;
 
             BriefDescriptorExtractor descriptor = new BriefDescriptorExtractor();
@@ -188,8 +197,6 @@ namespace facerecognition
             Matrix<byte> mask;
             int k = 2;
             double uniquenessThreshold = 0.8;
-
-            //extract features from the object image
 
             // extract features from the observed image
             BruteForceMatcher<Byte> matcher = new BruteForceMatcher<Byte>(DistanceType.L2);
@@ -215,7 +222,7 @@ namespace facerecognition
 
       public static int GetCommonKeypoints(Matrix<float> unknownImageDescriptor, VectorOfKeyPoint unknownImageKeyPoints, Matrix<float> dbImageDescriptor, VectorOfKeyPoint dbImageKeyPoints)
       {
-          SURFDetector surfCPU = new SURFDetector(500, false);
+          SURFDetector surfCPU = new SURFDetector(HESSIAN_TRESHOLD, false);
           Matrix<int> indices;
 
           Matrix<byte> mask;
@@ -241,135 +248,6 @@ namespace facerecognition
           }
 
           return nonZeroCount;
-      }
-
-      public static Image<Bgr, Byte> Draw(Image<Gray, Byte> modelImage, Image<Gray, byte> observedImage, out long matchTime)
-      {
-         Stopwatch watch;
-         HomographyMatrix homography = null;
- 
-         SURFDetector surfCPU = new SURFDetector(500, false);
-         VectorOfKeyPoint modelKeyPoints;
-         VectorOfKeyPoint observedKeyPoints;
-         Matrix<int> indices;
- 
-         Matrix<byte> mask;
-         int k = 2;
-         double uniquenessThreshold = 0.8;
-         if (GpuInvoke.HasCuda)
-         {
-            GpuSURFDetector surfGPU = new GpuSURFDetector(surfCPU.SURFParams, 0.01f);
-            using (GpuImage<Gray, Byte> gpuModelImage = new GpuImage<Gray, byte>(modelImage))
-            //extract features from the object image
-            using (GpuMat<float> gpuModelKeyPoints = surfGPU.DetectKeyPointsRaw(gpuModelImage, null))
-            using (GpuMat<float> gpuModelDescriptors = surfGPU.ComputeDescriptorsRaw(gpuModelImage, null, gpuModelKeyPoints))
-            using (GpuBruteForceMatcher<float> matcher = new GpuBruteForceMatcher<float>(DistanceType.L2))
-            {
-               modelKeyPoints = new VectorOfKeyPoint();
-               surfGPU.DownloadKeypoints(gpuModelKeyPoints, modelKeyPoints);
-               watch = Stopwatch.StartNew();
- 
-               // extract features from the observed image
-               using (GpuImage<Gray, Byte> gpuObservedImage = new GpuImage<Gray, byte>(observedImage))
-               using (GpuMat<float> gpuObservedKeyPoints = surfGPU.DetectKeyPointsRaw(gpuObservedImage, null))
-               using (GpuMat<float> gpuObservedDescriptors = surfGPU.ComputeDescriptorsRaw(gpuObservedImage, null, gpuObservedKeyPoints))
-               using (GpuMat<int> gpuMatchIndices = new GpuMat<int>(gpuObservedDescriptors.Size.Height, k, 1, true))
-               using (GpuMat<float> gpuMatchDist = new GpuMat<float>(gpuObservedDescriptors.Size.Height, k, 1, true))
-               using (GpuMat<Byte> gpuMask = new GpuMat<byte>(gpuMatchIndices.Size.Height, 1, 1))
-               using (Emgu.CV.GPU.Stream stream = new Emgu.CV.GPU.Stream())
-               {
-                  matcher.KnnMatchSingle(gpuObservedDescriptors, gpuModelDescriptors, gpuMatchIndices, gpuMatchDist, k, null, stream);
-                  indices = new Matrix<int>(gpuMatchIndices.Size);
-                  mask = new Matrix<byte>(gpuMask.Size);
- 
-                  //gpu implementation of voteForUniquess
-                  using (GpuMat<float> col0 = gpuMatchDist.Col(0))
-                  using (GpuMat<float> col1 = gpuMatchDist.Col(1))
-                  {
-                     GpuInvoke.Multiply(col1, new MCvScalar(uniquenessThreshold), col1, stream);
-                     GpuInvoke.Compare(col0, col1, gpuMask, CMP_TYPE.CV_CMP_LE, stream);
-                  }
- 
-                  observedKeyPoints = new VectorOfKeyPoint();
-                  surfGPU.DownloadKeypoints(gpuObservedKeyPoints, observedKeyPoints);
- 
-                  //wait for the stream to complete its tasks
-                  //We can perform some other CPU intesive stuffs here while we are waiting for the stream to complete.
-                  stream.WaitForCompletion();
-
- 
-                  gpuMask.Download(mask);
-                  gpuMatchIndices.Download(indices);
- 
-                  if (GpuInvoke.CountNonZero(gpuMask) >= 4)
-                  {
-                     int nonZeroCount = Features2DToolbox.VoteForSizeAndOrientation(modelKeyPoints, observedKeyPoints, indices, mask, 1.5, 20);
-                     if (nonZeroCount >= 4)
-                        homography = Features2DToolbox.GetHomographyMatrixFromMatchedFeatures(modelKeyPoints, observedKeyPoints, indices, mask, 2);
-                  }
- 
-                  watch.Stop();
-               }
-            }
-         } else
-         {
-            //extract features from the object image
-            modelKeyPoints = surfCPU.DetectKeyPointsRaw(modelImage, null);
-            Matrix<float> modelDescriptors = surfCPU.ComputeDescriptorsRaw(modelImage, null, modelKeyPoints);
- 
-            watch = Stopwatch.StartNew();
- 
-            // extract features from the observed image
-            observedKeyPoints = surfCPU.DetectKeyPointsRaw(observedImage, null);
-            Matrix<float> observedDescriptors = surfCPU.ComputeDescriptorsRaw(observedImage, null, observedKeyPoints);
-            BruteForceMatcher<float> matcher = new BruteForceMatcher<float>(DistanceType.L2);
-            matcher.Add(modelDescriptors);
- 
-            indices = new Matrix<int>(observedDescriptors.Rows, k);
-            using (Matrix<float> dist = new Matrix<float>(observedDescriptors.Rows, k))
-            {
-               matcher.KnnMatch(observedDescriptors, indices, dist, k, null);
-               mask = new Matrix<byte>(dist.Rows, 1);
-               mask.SetValue(255);
-               Features2DToolbox.VoteForUniqueness(dist, uniquenessThreshold, mask);
-            }
- 
-            int nonZeroCount = CvInvoke.cvCountNonZero(mask);
-            if (nonZeroCount >= 4)
-            {
-               nonZeroCount = Features2DToolbox.VoteForSizeAndOrientation(modelKeyPoints, observedKeyPoints, indices, mask, 1.5, 20);
-               if (nonZeroCount >= 4)
-                  homography = Features2DToolbox.GetHomographyMatrixFromMatchedFeatures(modelKeyPoints, observedKeyPoints, indices, mask, 2);
-            }
- 
-            watch.Stop();
-         }
-
-         int s = modelKeyPoints.Size;
-         int t = observedKeyPoints.Size;
-
-         //Draw the matched keypoints
-         Image<Bgr, Byte> result = Features2DToolbox.DrawMatches(modelImage, modelKeyPoints, observedImage, observedKeyPoints,
-            indices, new Bgr(255, 255, 255), new Bgr(255, 255, 255), mask, Features2DToolbox.KeypointDrawType.DEFAULT);
- 
-         #region draw the projected region on the image
-         if (homography != null)
-         {  //draw a rectangle along the projected model
-            Rectangle rect = modelImage.ROI;
-            PointF[] pts = new PointF[] { 
-               new PointF(rect.Left, rect.Bottom),
-               new PointF(rect.Right, rect.Bottom),
-               new PointF(rect.Right, rect.Top),
-               new PointF(rect.Left, rect.Top)};
-            homography.ProjectPoints(pts);
- 
-            result.DrawPolyline(Array.ConvertAll<PointF, Point>(pts, Point.Round), true, new Bgr(Color.Red), 5);
-         }
-         #endregion
- 
-         matchTime = watch.ElapsedMilliseconds;
- 
-         return result;
       }
     }
 }
