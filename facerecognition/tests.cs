@@ -24,10 +24,27 @@ namespace facerecognition
         {
             int count = 0;
             int errors = 0;
+            Stopwatch stopwatch = new Stopwatch();
+
+
+            stopwatch.Start();
+            Program.database = Program.ExtractDatabase(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location));
+            stopwatch.Stop();
+            long t = stopwatch.ElapsedMilliseconds;
+
+
             foreach (var file in Directory.GetFiles(@"C:\Users\Maxime\Downloads\yalefaces\yalefacesunique", "*.gif"))
             {
                 var fileName = Path.GetFileName(file);
-                var identification = Program.IdentifyAverageCommonKeypointFast(file);
+
+
+                stopwatch.Start();
+                var identification = Program.IdentifyAverageCommonKeypointFast(file, false);
+                stopwatch.Stop();
+                long t2 = stopwatch.ElapsedMilliseconds;
+
+
+                
                 Console.Out.WriteLine(fileName + " = " + identification.ToString());
                 if (Convert.ToInt32(fileName.Substring(7, 2)) != identification)
                 {

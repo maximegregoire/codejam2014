@@ -12,6 +12,6 @@ namespace ModelAnalysis
     public class PhotoAnalysisData
     {
         public MKeyPoint[] keypoints;
-        public Matrix<float> descriptors;
+        public Matrix<byte> descriptors;
     }
 }

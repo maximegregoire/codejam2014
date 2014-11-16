@@ -34,19 +34,19 @@
   <ItemGroup>
     <Reference Include="Emgu.CV, Version=2.9.0.1922, Culture=neutral, PublicKeyToken=7281126722ab4438, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>bin\Debug\Emgu.CV.dll</HintPath>
+      <HintPath>..\common dll\Emgu.CV.dll</HintPath>
     </Reference>
     <Reference Include="Emgu.CV.GPU, Version=2.9.0.1922, Culture=neutral, PublicKeyToken=7281126722ab4438, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>bin\Debug\Emgu.CV.GPU.dll</HintPath>
+      <HintPath>..\common dll\Emgu.CV.GPU.dll</HintPath>
     </Reference>
     <Reference Include="Emgu.CV.UI, Version=2.9.0.1922, Culture=neutral, PublicKeyToken=7281126722ab4438, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>bin\Debug\Emgu.CV.UI.dll</HintPath>
+      <HintPath>..\common dll\Emgu.CV.UI.dll</HintPath>
     </Reference>
     <Reference Include="Emgu.Util, Version=2.9.0.1922, Culture=neutral, PublicKeyToken=7281126722ab4438, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>bin\Debug\Emgu.Util.dll</HintPath>
+      <HintPath>..\common dll\Emgu.Util.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -59,6 +59,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Database.cs" />
     <Compile Include="Person.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -66,6 +67,12 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\ModelAnalysis\ModelAnalysis.csproj">
+      <Project>{f6335414-76a4-4daa-8db2-52f4ee28dcde}</Project>
+      <Name>ModelAnalysis</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

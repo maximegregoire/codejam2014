@@ -14,10 +14,11 @@ using Emgu.CV.GPU;
 using Emgu.CV.CvEnum;
 using Emgu.CV.Features2D;
 using Emgu.CV.Util;
+using ModelAnalysis;
 
 namespace facerecognition
 {
-    class Program
+    public class Program
     {
         public const int HESSIAN_TRESHOLD = 750;
 
@@ -27,12 +28,14 @@ namespace facerecognition
 
         public const string trainingDataset = "training dataset";
 
+        public static Dictionary<int, ICollection<PhotoAnalysisData>> database = new Dictionary<int,ICollection<PhotoAnalysisData>>();
+
         static void Main(string[] args)
         {
             if (args.Length == 0)
             {
                 Console.Out.WriteLine("You must use this program with a picture in the following form:");
-                Console.Out.WriteLine("facerecogntion subjectID_imageID.gif");
+                Console.Out.WriteLine("facerecognition subjectID_imageID.gif");
             }
             else
             {
@@ -87,53 +90,67 @@ namespace facerecognition
             }
         }
 
-        public static int IdentifyAverageCommonKeypointFast(string filePath)
+        public static int IdentifyAverageCommonKeypointFast(string filePath, bool shouldExtractDatabase = true)
         {
             string folderPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
-            var dbFiles = Directory.GetFiles(Path.Combine(folderPath, Program.trainingDataset), "*.gif");
+            //var dbFiles = Directory.GetFiles(Path.Combine(folderPath, Program.trainingDataset), "*.gif");
             var dictionary = new Dictionary<int, Person>();
+
+            if (shouldExtractDatabase)
+            {
+                database = ExtractDatabase(folderPath);
+            }
+
+            VectorOfKeyPoint unknownKeyPoints;
+            Matrix<Byte> unknownDescriptors;
 
             using (FastDetector fastCPU = new FastDetector(FAST_TRESHOLD, NON_MAXIMAL_SUPRESSION))
             using (var descriptor = new BriefDescriptorExtractor())
+            using (var unknownImage = new Image<Gray, byte>(filePath))
             {
-                var unknownImage = new Image<Gray, byte>(filePath);
+                unknownKeyPoints = fastCPU.DetectKeyPointsRaw(unknownImage, null);
+                unknownDescriptors = descriptor.ComputeDescriptorsRaw(unknownImage, null, unknownKeyPoints);
+            }
 
-                VectorOfKeyPoint unknownKeyPoints = fastCPU.DetectKeyPointsRaw(unknownImage, null);
-                Matrix<Byte> unknownDescriptors = descriptor.ComputeDescriptorsRaw(unknownImage, null, unknownKeyPoints);
-
-                foreach (var dbFile in dbFiles)
+            foreach (var subject in database)
+            {   
+                foreach (var subjectPhoto in subject.Value)
                 {
-                    var dbImage = new Image<Gray, byte>(dbFile);
-
-                    
-                    
-                    VectorOfKeyPoint dbKeyPoints = fastCPU.DetectKeyPointsRaw(dbImage, null);
-                    Matrix<Byte> dbDescriptors = descriptor.ComputeDescriptorsRaw(dbImage, null, dbKeyPoints);
-
-                    int computedKeypoints = Program.GetCommonKeypointsFast(unknownDescriptors, unknownKeyPoints, dbDescriptors, dbKeyPoints);
-
+                    var dbKeyPoints = new VectorOfKeyPoint();
+                    dbKeyPoints.Push(subjectPhoto.keypoints);
+                    int computedKeypoints = Program.GetCommonKeypointsFast(unknownDescriptors, unknownKeyPoints, subjectPhoto.descriptors, dbKeyPoints);
+                        
                     //TODO: handle possible error from parsing
-                    int subjectId = Convert.ToInt32(Path.GetFileName(dbFile.Split('_')[0]));
-
-                    if (!dictionary.ContainsKey(subjectId))
+                    if (!dictionary.ContainsKey(subject.Key))
                     {
-                        dictionary.Add(subjectId, new Person(subjectId));
+                        dictionary.Add(subject.Key, new Person(subject.Key));
                     }
 
                     var person = new Person(0);
-                    if(!dictionary.TryGetValue(subjectId, out person))
+                    if (!dictionary.TryGetValue(subject.Key, out person))
                     {
                         throw new InvalidOperationException("something went wrong with the dictionary");
                     }
 
                     person.AddComparison(computedKeypoints);
-                    
-                }
-
-                return dictionary.Aggregate((l, r) => l.Value.AverageCommonKeypoints > r.Value.AverageCommonKeypoints ? l : r).Key;
+                }       
             }
+
+            return dictionary.Aggregate((l, r) => l.Value.AverageCommonKeypoints > r.Value.AverageCommonKeypoints ? l : r).Key;
         }
-        
+
+        public static Dictionary<int, ICollection<PhotoAnalysisData>> ExtractDatabase(string currentFolder)
+        {
+            string databaseFolder = Path.Combine(currentFolder, "Database");
+            var dictionary = new Dictionary<int, ICollection<PhotoAnalysisData>>();
+            //Deserialize objects
+            foreach (var modelData in ModelAnalysisDataSerializer.GetModelAnalyses(databaseFolder))
+            {
+                dictionary.Add(modelData.subjectId, modelData.photoAnalyses);
+            }
+
+            return dictionary;
+        }
         
         static string GetFilePath(string arg)
         {

@@ -40,7 +40,7 @@ namespace FaceRecognitionTrainer
 
                 ModelAnalysisDataSerializer.WriteModelAnalysisData(databaseFolder, modelAnalysis);
             }
-
+            
             //Deserialize objects
             foreach (var modelData in ModelAnalysisDataSerializer.GetModelAnalyses(databaseFolder))
             {
@@ -74,11 +74,13 @@ namespace FaceRecognitionTrainer
 
         static PhotoAnalysisData AnalyzePhoto(string photoPath)
         {
-            SURFDetector surfCPU = new SURFDetector(500, false);
+            var fastCPU = new FastDetector(facerecognition.Program.FAST_TRESHOLD, facerecognition.Program.NON_MAXIMAL_SUPRESSION);
+            var descriptor = new BriefDescriptorExtractor();
+            
             Image<Gray, Byte> modelImage = new Image<Gray, byte>(photoPath);
 
-            VectorOfKeyPoint modelKeyPoints = surfCPU.DetectKeyPointsRaw(modelImage, null);
-            Matrix<float> modelDescriptors = surfCPU.ComputeDescriptorsRaw(modelImage, null, modelKeyPoints);
+            VectorOfKeyPoint modelKeyPoints = fastCPU.DetectKeyPointsRaw(modelImage, null);
+            Matrix<Byte> modelDescriptors = descriptor.ComputeDescriptorsRaw(modelImage, null, modelKeyPoints);
 
             return new PhotoAnalysisData { keypoints = modelKeyPoints.ToArray().OrderBy(k => k.Size).ToArray(), descriptors = modelDescriptors };
         }

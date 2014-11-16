@@ -65,6 +65,10 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\facerecognition\facerecognition.csproj">
+      <Project>{b70eba7a-6b14-4812-8854-33af1984e909}</Project>
+      <Name>facerecognition</Name>
+    </ProjectReference>
     <ProjectReference Include="..\ModelAnalysis\ModelAnalysis.csproj">
       <Project>{f6335414-76a4-4daa-8db2-52f4ee28dcde}</Project>
       <Name>ModelAnalysis</Name>
