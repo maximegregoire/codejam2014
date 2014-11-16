@@ -28,95 +28,11 @@ namespace facerecognition
             string filePath = GetFilePath(args[0]);
 
             //long time;
-            testSubset();
+            Tests.testSubsetFast();
+
             //testFullDatabase();
         }
-
-        static void testFullDatabase()
-        {
-            int results = 0;
-            int error = 0;
-
-            string folderPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
-            foreach (var modelFile in Directory.GetFiles(@"C:\Users\Maxime\Downloads\yalefaces\yalefaces", "*.gif"))
-            {
-
-                var modelImage = new Image<Gray, byte>(modelFile);
-                int maxKeyPoints = 0;
-                string maxKeyPointsImage = string.Empty;
-
-                using (FastDetector fastCPU = new FastDetector(10, true))
-                {
-                    VectorOfKeyPoint modelKeyPoints = fastCPU.DetectKeyPointsRaw(modelImage, null);
-
-                    foreach (var file in Directory.GetFiles(@"C:\Users\Maxime\Downloads\yalefaces\yalefaces", "*.gif").Where(f => f != modelFile))
-                    {
-                        int computedKeypoints = GetCommonKeypointsNoCudaFast(modelImage, new Image<Gray, byte>(file), modelKeyPoints);
-                        if (computedKeypoints > maxKeyPoints)
-                        {
-                            maxKeyPoints = computedKeypoints;
-                            maxKeyPointsImage = file;
-                        }
-                    }
-                }
-
-
-
-                results++;
-                if (!Path.GetFileName(modelFile).Split('.')[0].Equals(Path.GetFileName(maxKeyPointsImage).Split('.')[0]))
-                {
-                    Console.Out.WriteLine("ERROR");
-                    error++;
-                }
-
-                Console.Out.WriteLine("Results for model " + Path.GetFileName(modelFile) + " = " + Path.GetFileName(maxKeyPointsImage));
-            }
-
-            Console.Out.WriteLine("\n\n\n RESULTS = " + (100 - (((float)(error) / (float)(results)) * 100)));
-        }
-
-        static void testSubset()
-        {
-            int results = 0;
-            int error = 0;
-
-            string folderPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
-            foreach (var modelFile in Directory.GetFiles(Path.Combine(folderPath, trainingDataset), "*.gif"))
-            {
-                var modelImage = new Image<Gray, byte>(modelFile); 
-                int maxKeyPoints = 0;
-                string maxKeyPointsImage = string.Empty;
-
-                using (FastDetector fastCPU = new FastDetector(10, true))
-                {
-                    VectorOfKeyPoint modelKeyPoints = fastCPU.DetectKeyPointsRaw(modelImage, null);
-
-                    foreach (var file in Directory.GetFiles(Path.Combine(folderPath, trainingDataset), "*.gif").Where(f => f != modelFile))
-                    {
-                        int computedKeypoints = GetCommonKeypointsNoCudaFast(modelImage, new Image<Gray, byte>(file), modelKeyPoints);
-                        if (computedKeypoints > maxKeyPoints)
-                        {
-                            maxKeyPoints = computedKeypoints;
-                            maxKeyPointsImage = file;
-                        }
-                    }
-                }
-
-                
-
-                results++;
-                if (!Path.GetFileName(modelFile).Split('_')[0].Equals(Path.GetFileName(maxKeyPointsImage).Split('_')[0]))
-                {
-                    Console.Out.WriteLine("ERROR");
-                    error++;
-                }
-
-                Console.Out.WriteLine("Results for model " + Path.GetFileName(modelFile) + " = " + Path.GetFileName(maxKeyPointsImage));
-            }
-
-            Console.Out.WriteLine("\n\n\n RESULTS = " + (100 - (((float)(error) / (float)(results)) * 100)));
-        }
-
+        
         static string GetFilePath(string arg)
         {
             string folderPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
@@ -131,109 +47,23 @@ namespace facerecognition
         }
 
 
-      public static int GetCommonKeypoints(Image<Gray, Byte> modelImage, Image<Gray, byte> observedImage)
-      {
-         HomographyMatrix homography = null;
- 
-         SURFDetector surfCPU = new SURFDetector(500, false);
-         VectorOfKeyPoint modelKeyPoints;
-         VectorOfKeyPoint observedKeyPoints;
-         Matrix<int> indices;
- 
-         Matrix<byte> mask;
-         int k = 2;
-         double uniquenessThreshold = 0.8;
-        //extract features from the object image
-        modelKeyPoints = surfCPU.DetectKeyPointsRaw(modelImage, null);
-        Matrix<float> modelDescriptors = surfCPU.ComputeDescriptorsRaw(modelImage, null, modelKeyPoints);
- 
-        // extract features from the observed image
-        observedKeyPoints = surfCPU.DetectKeyPointsRaw(observedImage, null);
-        Matrix<float> observedDescriptors = surfCPU.ComputeDescriptorsRaw(observedImage, null, observedKeyPoints);
-        BruteForceMatcher<float> matcher = new BruteForceMatcher<float>(DistanceType.L2);
-        matcher.Add(modelDescriptors);
- 
-        indices = new Matrix<int>(observedDescriptors.Rows, k);
-        using (Matrix<float> dist = new Matrix<float>(observedDescriptors.Rows, k))
+        public static int GetCommonKeypointsOriginal(Image<Gray, Byte> imageToIdentify, Image<Gray, byte> databaseImage)
         {
-            matcher.KnnMatch(observedDescriptors, indices, dist, k, null);
-            mask = new Matrix<byte>(dist.Rows, 1);
-            mask.SetValue(255);
-            Features2DToolbox.VoteForUniqueness(dist, uniquenessThreshold, mask);
-        }
- 
-        int nonZeroCount = CvInvoke.cvCountNonZero(mask);
-        if (nonZeroCount >= 4)
-        {
-            nonZeroCount = Features2DToolbox.VoteForSizeAndOrientation(modelKeyPoints, observedKeyPoints, indices, mask, 1.5, 20);
-            if (nonZeroCount >= 4)
-                homography = Features2DToolbox.GetHomographyMatrixFromMatchedFeatures(modelKeyPoints, observedKeyPoints, indices, mask, 2);
-        }
+            SURFDetector surfCPU = new SURFDetector(500, false);
+            VectorOfKeyPoint modelKeyPoints;
+            VectorOfKeyPoint observedKeyPoints;
+            Matrix<int> indices;
 
-        return nonZeroCount;
-    }
-
-      public static int GetCommonKeypointsNoCudaFast(Image<Gray, Byte> modelImage, Image<Gray, byte> observedImage, VectorOfKeyPoint modelKeyPoints)
-      {
-          HomographyMatrix homography = null;
-
-          FastDetector fastCPU = new FastDetector(10, true);
-          VectorOfKeyPoint observedKeyPoints;
-          Matrix<int> indices;
-
-          BriefDescriptorExtractor descriptor = new BriefDescriptorExtractor();
-
-          Matrix<byte> mask;
-          int k = 2;
-          double uniquenessThreshold = 0.8;
-
-          //extract features from the object image
-          Matrix<Byte> modelDescriptors = descriptor.ComputeDescriptorsRaw(modelImage, null, modelKeyPoints);
-
-          // extract features from the observed image
-          observedKeyPoints = fastCPU.DetectKeyPointsRaw(observedImage, null);
-          Matrix<Byte> observedDescriptors = descriptor.ComputeDescriptorsRaw(observedImage, null, observedKeyPoints);
-          BruteForceMatcher<Byte> matcher = new BruteForceMatcher<Byte>(DistanceType.L2);
-          matcher.Add(modelDescriptors);
-
-          indices = new Matrix<int>(observedDescriptors.Rows, k);
-          using (Matrix<float> dist = new Matrix<float>(observedDescriptors.Rows, k))
-          {
-              matcher.KnnMatch(observedDescriptors, indices, dist, k, null);
-              mask = new Matrix<byte>(dist.Rows, 1);
-              mask.SetValue(255);
-              Features2DToolbox.VoteForUniqueness(dist, uniquenessThreshold, mask);
-          }
-
-          int nonZeroCount = CvInvoke.cvCountNonZero(mask);
-          if (nonZeroCount >= 4)
-          {
-              nonZeroCount = Features2DToolbox.VoteForSizeAndOrientation(modelKeyPoints, observedKeyPoints, indices, mask, 1.5, 20);
-              if (nonZeroCount >= 4)
-                  homography = Features2DToolbox.GetHomographyMatrixFromMatchedFeatures(modelKeyPoints, observedKeyPoints, indices, mask, 2);
-          }
-
-          return nonZeroCount;
-      }
-
-      public static int GetCommonKeypointsNoCuda(Image<Gray, Byte> modelImage, Image<Gray, byte> observedImage, VectorOfKeyPoint modelKeyPoints)
-      {
-          HomographyMatrix homography = null;
-
-          SURFDetector surfCPU = new SURFDetector(500, false);
-          VectorOfKeyPoint observedKeyPoints;
-          Matrix<int> indices;
-
-          Matrix<byte> mask;
-          int k = 2;
-          double uniquenessThreshold = 0.8;
-
+            Matrix<byte> mask;
+            int k = 2;
+            double uniquenessThreshold = 0.8;
             //extract features from the object image
-            Matrix<float> modelDescriptors = surfCPU.ComputeDescriptorsRaw(modelImage, null, modelKeyPoints);
+            modelKeyPoints = surfCPU.DetectKeyPointsRaw(imageToIdentify, null);
+            Matrix<float> modelDescriptors = surfCPU.ComputeDescriptorsRaw(imageToIdentify, null, modelKeyPoints);
 
             // extract features from the observed image
-            observedKeyPoints = surfCPU.DetectKeyPointsRaw(observedImage, null);
-            Matrix<float> observedDescriptors = surfCPU.ComputeDescriptorsRaw(observedImage, null, observedKeyPoints);
+            observedKeyPoints = surfCPU.DetectKeyPointsRaw(databaseImage, null);
+            Matrix<float> observedDescriptors = surfCPU.ComputeDescriptorsRaw(databaseImage, null, observedKeyPoints);
             BruteForceMatcher<float> matcher = new BruteForceMatcher<float>(DistanceType.L2);
             matcher.Add(modelDescriptors);
 
@@ -250,11 +80,74 @@ namespace facerecognition
             if (nonZeroCount >= 4)
             {
                 nonZeroCount = Features2DToolbox.VoteForSizeAndOrientation(modelKeyPoints, observedKeyPoints, indices, mask, 1.5, 20);
-                if (nonZeroCount >= 4)
-                    homography = Features2DToolbox.GetHomographyMatrixFromMatchedFeatures(modelKeyPoints, observedKeyPoints, indices, mask, 2);
             }
 
             return nonZeroCount;
+        }
+
+        public static int GetCommonKeypointsFast(Matrix<Byte> unknownDescriptors, VectorOfKeyPoint unknownImageKeyPoints, Matrix<Byte> dbDescriptors, VectorOfKeyPoint dbImageKeyPoints)
+        {
+            FastDetector fastCPU = new FastDetector(10, true);
+            Matrix<int> indices;
+
+            BriefDescriptorExtractor descriptor = new BriefDescriptorExtractor();
+
+            Matrix<byte> mask;
+            int k = 2;
+            double uniquenessThreshold = 0.8;
+
+            //extract features from the object image
+
+            // extract features from the observed image
+            BruteForceMatcher<Byte> matcher = new BruteForceMatcher<Byte>(DistanceType.L2);
+            matcher.Add(unknownDescriptors);
+
+            indices = new Matrix<int>(dbDescriptors.Rows, k);
+            using (Matrix<float> dist = new Matrix<float>(dbDescriptors.Rows, k))
+            {
+                matcher.KnnMatch(dbDescriptors, indices, dist, k, null);
+                mask = new Matrix<byte>(dist.Rows, 1);
+                mask.SetValue(255);
+                Features2DToolbox.VoteForUniqueness(dist, uniquenessThreshold, mask);
+            }
+
+            int nonZeroCount = CvInvoke.cvCountNonZero(mask);
+            if (nonZeroCount >= 4)
+            {
+                nonZeroCount = Features2DToolbox.VoteForSizeAndOrientation(unknownImageKeyPoints, dbImageKeyPoints, indices, mask, 1.5, 20);
+            }
+
+            return nonZeroCount;
+        }
+
+      public static int GetCommonKeypoints(Matrix<float> unknownImageDescriptor, VectorOfKeyPoint unknownImageKeyPoints, Matrix<float> dbImageDescriptor, VectorOfKeyPoint dbImageKeyPoints)
+      {
+          SURFDetector surfCPU = new SURFDetector(500, false);
+          Matrix<int> indices;
+
+          Matrix<byte> mask;
+          int k = 2;
+          double uniquenessThreshold = 0.8;
+
+          BruteForceMatcher<float> matcher = new BruteForceMatcher<float>(DistanceType.L2);
+          matcher.Add(unknownImageDescriptor);
+
+          indices = new Matrix<int>(dbImageDescriptor.Rows, k);
+          using (Matrix<float> dist = new Matrix<float>(dbImageDescriptor.Rows, k))
+          {
+              matcher.KnnMatch(dbImageDescriptor, indices, dist, k, null);
+              mask = new Matrix<byte>(dist.Rows, 1);
+              mask.SetValue(255);
+              Features2DToolbox.VoteForUniqueness(dist, uniquenessThreshold, mask);
+          }
+
+          int nonZeroCount = CvInvoke.cvCountNonZero(mask);
+          if (nonZeroCount >= 4)
+          {
+              nonZeroCount = Features2DToolbox.VoteForSizeAndOrientation(unknownImageKeyPoints, dbImageKeyPoints, indices, mask, 1.5, 20);
+          }
+
+          return nonZeroCount;
       }
 
       public static Image<Bgr, Byte> Draw(Image<Gray, Byte> modelImage, Image<Gray, byte> observedImage, out long matchTime)
