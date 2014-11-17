@@ -15,6 +15,7 @@ using System.Drawing;
 using System.Text;
 using System.Threading.Tasks;
 using System.IO;
+using System.Windows.Forms;
 
 using Emgu.CV;
 using Emgu.CV.Structure;
@@ -97,11 +98,17 @@ namespace facerecognition
         public const float IMAGE_SCALING_FACTOR = 0.625f;
 
         /// <summary>
+        /// Threshold for the amout of significant keypoint matches
+        /// </summary>
+        public const int SIGNIFICANT_KEYPOINT_THRESHOLD = 4;
+
+        /// <summary>
         /// The entry point of the code
         /// </summary>
         /// <param name="args">The command line argument(s)</param>
         static void Main(string[] args)
         {
+            /*
             if (args.Length == 0)
             {
                 Console.Out.WriteLine("You must use this program with a picture in the following form:");
@@ -121,9 +128,13 @@ namespace facerecognition
                     return;
                 }
 
-                Console.Out.WriteLine(IdentifyFaceWithDataset(args[0], trainingDataset));
+                IdentifyFaceWithDataset(args[0], trainingDataset);
             }
+             * */
+
+            Tests.testRecognitionYale();
         }
+
 
         /// <summary>
         /// Checks that a given file is an image
@@ -142,7 +153,7 @@ namespace facerecognition
         /// </summary>
         /// <param name="picturePath">The path of the picture</param>
         /// <returns>The cropped and scalled image</returns>
-        private static Image<Gray, byte> CropAndScalePicture(string picturePath)
+        public static Image<Gray, byte> CropAndScalePicture(string picturePath)
         {
             Bitmap myBitmap = new Bitmap(picturePath);
             Rectangle cloneRect = new Rectangle(CROP_WIDTH, CROP_HEIGHT_BOTTOM, myBitmap.Width - (2 * CROP_WIDTH), myBitmap.Height - CROP_HEIGHT_BOTTOM - CROP_HEIGHT_TOP);
@@ -151,7 +162,7 @@ namespace facerecognition
         }
 
         /// <summary>
-        /// Give a cropped, Laplace'd and scalled image of a given picture
+        /// Give a cropped, Laplace'd and scaled image of a given picture
         /// </summary>
         /// <param name="picturePath">The path of the picture</param>
         /// <returns>The transformed image</returns>
@@ -191,25 +202,14 @@ namespace facerecognition
                 fastCPU = new FastDetector(FAST_TRESHOLD_ACQUIRING, NON_MAXIMAL_SUPRESSION);
                 foreach (var dbFile in dbFiles)
                 {
-                    if (dbFile.Equals(filePath))
-                    {
-                        continue;
-                    }
-
                     var dbImage = TransformPicture(dbFile);
 
 
-                    VectorOfKeyPoint dbKeyPoints = new VectorOfKeyPoint();
-
-                    //var dbKeypointArray = fastCPU.DetectKeyPointsRaw(dbImage, null).ToArray().Where(k => k.Response < POINT_RESPONSE_UPPER && k.Response > POINT_RESPONSE_LOWER).ToArray();
-                    //dbKeyPoints.Push(dbKeypointArray);
-                    dbKeyPoints = fastCPU.DetectKeyPointsRaw(dbImage, null);
-
+                    VectorOfKeyPoint dbKeyPoints = fastCPU.DetectKeyPointsRaw(dbImage, null);
                     Matrix<Byte> dbDescriptors = descriptor.ComputeDescriptorsRaw(dbImage, null, dbKeyPoints);
 
                     int computedKeypoints = facerecognition.GetCommonKeypointsFast(unknownDescriptors, unknownKeyPoints, dbDescriptors, dbKeyPoints);
 
-                    //TODO: handle possible error from parsing
                     int subjectId = Convert.ToInt32(Path.GetFileName(dbFile).Split('_')[0]);
 
                     if (!dictionary.ContainsKey(subjectId))
@@ -229,7 +229,26 @@ namespace facerecognition
 
                 return dictionary.Aggregate((l, r) => l.Value.AverageCommonKeypoints > r.Value.AverageCommonKeypoints ? l : r).Key;
             }
-        }    
+        }
+
+        /// <summary>
+        /// Utility function to preprocess all images from training dataset
+        /// </summary>
+        /// <param name="dbPathIn">full path of training dataset</param>
+        /// <param name="dbPathOut">full path of destination preprocessed image folder</param>
+        /// <returns>The ID of the face on the picture</returns>
+        public static void PreprocessImages(string dbPathIn, string dbPathOut)
+        {
+            Directory.CreateDirectory(dbPathOut);
+            foreach (var file in Directory.GetFiles(dbPathIn).Where(f => f.EndsWith(".gif") || f.EndsWith(".GIF") || f.EndsWith(".bmp") || f.EndsWith(".BMP") || f.EndsWith(".jpg") || f.EndsWith(".JPG") || f.EndsWith(".PNG") || f.EndsWith(".png")))
+            {
+                var fileName = Path.GetFileName(file);
+                var image = TransformPicture(file);
+
+                var newFilePath = Path.Combine(dbPathOut, fileName);
+                image.Save(newFilePath);
+            }
+        }
 
         /// <summary>
         /// Gets the amount of common key points between two sets of descriptors and key points, using a fast generator
@@ -241,14 +260,10 @@ namespace facerecognition
         /// <returns>The amount of common key points</returns>
         public static int GetCommonKeypointsFast(Matrix<Byte> unknownDescriptors, VectorOfKeyPoint unknownImageKeyPoints, Matrix<Byte> dbDescriptors, VectorOfKeyPoint dbImageKeyPoints)
         {
-            FastDetector fastCPU = new FastDetector(FAST_TRESHOLD_PROCESSING, NON_MAXIMAL_SUPRESSION);
             Matrix<int> indices;
-
-            BriefDescriptorExtractor descriptor = new BriefDescriptorExtractor();
-
             Matrix<byte> mask;
 
-            // extract features from the observed image
+            //Try to match the features
             BruteForceMatcher<Byte> matcher = new BruteForceMatcher<Byte>(BFM_OPTION);
             matcher.Add(unknownDescriptors);
 
@@ -267,7 +282,7 @@ namespace facerecognition
             }
 
             int numOfKeypoints = CvInvoke.cvCountNonZero(mask);
-            if (numOfKeypoints >= 4)
+            if (numOfKeypoints >= SIGNIFICANT_KEYPOINT_THRESHOLD)
             {
                 return Features2DToolbox.VoteForSizeAndOrientation(unknownImageKeyPoints, dbImageKeyPoints, indices, mask, SCALE_INCREMENT, ROTATION_BINS);
             }

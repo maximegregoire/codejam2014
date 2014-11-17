@@ -81,7 +81,7 @@ namespace facerecognition
 
             string folderPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
 
-            foreach (var file in Directory.GetFiles(@"C:\CodeJam\training dataset", "*.gif"))
+            foreach (var file in Directory.GetFiles(@"unique", "*.gif"))
             {
                 var fileName = Path.GetFileName(file);
 
