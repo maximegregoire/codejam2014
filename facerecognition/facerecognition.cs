@@ -23,6 +23,7 @@ using Emgu.CV.GPU;
 using Emgu.CV.CvEnum;
 using Emgu.CV.Features2D;
 using Emgu.CV.Util;
+using Emgu.CV.Flann;
 
 using ModelAnalysis;
 
@@ -36,7 +37,7 @@ namespace facerecognition
         /// <summary>
         /// The FAST detector's threshold for processing data (during comparison of pictures)
         /// </summary>
-        public const int FAST_TRESHOLD_PROCESSING = 5;
+        public const int FAST_TRESHOLD_PROCESSING = 7;
 
         /// <summary>
         /// The FAST detector's threshold for acquiring data (during acquisition of dataset keypoints)
@@ -76,32 +77,49 @@ namespace facerecognition
         /// <summary>
         /// The configuration for the distance type of the brute-force matcher
         /// </summary>
-        public const DistanceType BFM_OPTION = DistanceType.L1;
+        public const DistanceType BFM_OPTION = DistanceType.Hamming;
+
+        /// <summary>
+        /// Amount of pixel to chop off both sides of the image
+        /// </summary>
+        public const int CROP_WIDTH = 0;
+
+        /// <summary>
+        /// Amount of pixel to chop off the top and bottom of the image
+        /// </summary>
+        public const int CROP_HEIGHT_BOTTOM = 0;
+
+        public const int CROP_HEIGHT_TOP = 0;
+
+        public const float IMAGE_SCALING_FACTOR = 0.65f;
 
         //public const int POINT_RESPONSE_LOWER_SURF = 3000;
-        //public const int HESSIAN_TRESH = 500;
-        
+        //public const int HESSIAN_TRESH = 300;
+
         /// <summary>
         /// The entry point of the code
         /// </summary>
         /// <param name="args">The command line argument(s)</param>
         static void Main(string[] args)
         {
-            if (args.Length == 0)
-            {
-                Console.Out.WriteLine("You must use this program with a picture in the following form:");
-                Console.Out.WriteLine("facerecognition subjectID_imageID.gif");
-            }
-            else
-            {
-                if (!File.Exists(args[0]))
-                {
-                    Console.Out.Write("The specified file cannot be found in the current folder");
-                    return;
-                }
+            //if (args.Length == 0)
+            //{
+            //    Console.Out.WriteLine("You must use this program with a picture in the following form:");
+            //    Console.Out.WriteLine("facerecognition subjectID_imageID.gif");
+            //}
+            //else
+            //{
+            //    if (!File.Exists(args[0]))
+            //    {
+            //        Console.Out.Write("The specified file cannot be found in the current folder");
+            //        return;
+            //    }
 
-                Console.Out.WriteLine(IdentifyFaceWithDataset(args[0], trainingDataset));
-            }
+            //    Console.Out.WriteLine(IdentifyFaceWithDataset(args[0], trainingDataset));
+            //}
+
+            //Tests.testAverageKeypointFastOnRealPhotos();
+            Tests.testAverageKeypointFast();
         }
 
         /*
@@ -155,6 +173,37 @@ namespace facerecognition
         }*/
 
         /// <summary>
+        /// Give a cropped and scalled image of a given picture
+        /// </summary>
+        /// <param name="picturePath">The path of the picture</param>
+        /// <returns>The cropped and scalled image</returns>
+        public static Image<Gray, byte> CropAndScalePicture(string picturePath)
+        {
+            Bitmap myBitmap = new Bitmap(picturePath);
+            Rectangle cloneRect = new Rectangle(CROP_WIDTH, CROP_HEIGHT_BOTTOM, myBitmap.Width - (2 * CROP_WIDTH), myBitmap.Height - CROP_HEIGHT_BOTTOM - CROP_HEIGHT_TOP);
+            Bitmap cloneBitmap = myBitmap.Clone(cloneRect, myBitmap.PixelFormat);
+            return new Image<Gray, byte>(new Bitmap(cloneBitmap, new Size((int)(cloneBitmap.Width * IMAGE_SCALING_FACTOR), (int)(cloneBitmap.Height * IMAGE_SCALING_FACTOR)))); ;
+        }
+
+        /// <summary>
+        /// Give a cropped, Laplace'd and scalled image of a given picture
+        /// </summary>
+        /// <param name="picturePath">The path of the picture</param>
+        /// <returns>The transformed image</returns>
+        public static Image<Gray, byte> TransformPicture(string picturePath)
+        {
+            Bitmap myBitmap = new Bitmap(picturePath);
+            Rectangle cloneRect = new Rectangle(CROP_WIDTH, CROP_HEIGHT_BOTTOM, myBitmap.Width - (2 * CROP_WIDTH), myBitmap.Height - CROP_HEIGHT_BOTTOM - CROP_HEIGHT_TOP);
+            Bitmap cloneBitmap = myBitmap.Clone(cloneRect, myBitmap.PixelFormat);
+
+            var bmp = new Image<Gray, byte>(new Bitmap(cloneBitmap, new Size((int)(cloneBitmap.Width * IMAGE_SCALING_FACTOR), (int)(cloneBitmap.Height * IMAGE_SCALING_FACTOR))));
+            var lap = bmp.Laplace(1);
+            var aa = lap.ToBitmap();
+            bmp = new Image<Gray, byte>(aa);
+            return bmp;
+        }            
+
+        /// <summary>
         /// Identifies the face on the file given, using the dataset at the given path
         /// </summary>
         /// <param name="filePath">full path of the picture to identify</param>
@@ -162,19 +211,17 @@ namespace facerecognition
         /// <returns>The ID of the face on the picture</returns>
         public static int IdentifyFaceWithDataset(string filePath, string datasetPath)
         {
-            var dbFiles = Directory.GetFiles(datasetPath, "*.gif");
+            var dbFiles = Directory.GetFiles(datasetPath).Where(f => f.EndsWith(".gif") || f.EndsWith(".GIF") || f.EndsWith(".bmp") || f.EndsWith(".BMP") || f.EndsWith(".jpg") || f.EndsWith(".JPG") || f.EndsWith(".PNG") || f.EndsWith(".png"));
             var dictionary = new Dictionary<int, Person>();
             VectorOfKeyPoint unknownKeyPoints = new VectorOfKeyPoint();
             Matrix<Byte> unknownDescriptors;
             FastDetector fastCPU = new FastDetector(FAST_TRESHOLD_PROCESSING, NON_MAXIMAL_SUPRESSION);
             using (var descriptor = new BriefDescriptorExtractor())
-            using (var unknownImage = new Image<Gray, byte>(filePath))
             {
-                //var keypointArray = fastCPU.DetectKeyPointsRaw(unknownImage, null).ToArray().Where(k => k.Response < POINT_RESPONSE_UPPER && k.Response > POINT_RESPONSE_LOWER).ToArray();
-                //unknownKeyPoints.Push(keypointArray);
+                var unknownImage = CropAndScalePicture(filePath);
+
                 unknownKeyPoints = fastCPU.DetectKeyPointsRaw(unknownImage, null);
                 unknownDescriptors = descriptor.ComputeDescriptorsRaw(unknownImage, null, unknownKeyPoints);
-                
 
                 fastCPU = new FastDetector(FAST_TRESHOLD_ACQUIRING, NON_MAXIMAL_SUPRESSION);
                 foreach (var dbFile in dbFiles)
@@ -186,7 +233,7 @@ namespace facerecognition
                         continue;
                     }
 
-                    var dbImage = new Image<Gray, byte>(dbFile);
+                    var dbImage = CropAndScalePicture(dbFile);
 
 
                     VectorOfKeyPoint dbKeyPoints = new VectorOfKeyPoint();
@@ -244,7 +291,24 @@ namespace facerecognition
                 unknownDescriptors = surfCPU.ComputeDescriptorsRaw(unknownImage, null, unknownKeyPoints);
 
 
-                foreach (var dbFile in dbFiles)
+                IList<IndecesMapping> imap;
+
+                // compute descriptors for each image
+                var dbDescsList = ComputeMultipleDescriptors(dbFiles, out imap);
+
+                // concatenate all DB images descriptors into single Matrix
+                Matrix<float> dbDescs = ConcatDescriptors(dbDescsList);
+
+                // compute descriptors for the query image
+                Matrix<float> queryDescriptors = ComputeSingleDescriptors(filePath);
+
+                FindMatches(dbDescs, queryDescriptors, ref imap);
+
+                var max = imap.OrderByDescending(i => i.IndexEnd).FirstOrDefault();
+                return 3;
+
+
+                /*foreach (var dbFile in dbFiles)
                 {
 
                     // TODO ::   ERASE THIS WHEN DONE TESTINGGGGGGGGGGGGGGGGGGGGGGGGGGGG@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
@@ -263,7 +327,11 @@ namespace facerecognition
 
                     Matrix<float> dbDescriptors = surfCPU.ComputeDescriptorsRaw(dbImage, null, dbKeyPoints);
 
-                    int computedKeypoints = facerecognition.GetCommonKeypointsSurf(unknownDescriptors, unknownKeyPoints, dbDescriptors, dbKeyPoints);
+
+                    IList<IndecesMapping> imap = new List<IndecesMapping>();
+
+                    GetMatches(unknownDescriptors, unknownKeyPoints, dbDescriptors, dbKeyPoints, ref imap);
+                    int computedKeypoints = imap.Count;//facerecognition.GetCommonKeypointsSurf(unknownDescriptors, unknownKeyPoints, dbDescriptors, dbKeyPoints);
 
                     //TODO: handle possible error from parsing
                     int subjectId = Convert.ToInt32(Path.GetFileName(dbFile.Split('_')[0]));
@@ -345,16 +413,38 @@ namespace facerecognition
         }
 
         /*
-        public static int GetCommonKeypointsSurf(Matrix<float> unknownDescriptors, VectorOfKeyPoint unknownImageKeyPoints, Matrix<float> dbDescriptors, VectorOfKeyPoint dbImageKeyPoints)
+        public static int GetCommonKeypointsSurf(Matrix<float> unknownDescriptors, VectorOfKeyPoint unknownImageKeyPoints, Matrix<float> dbDescriptors, VectorOfKeyPoint dbImageKeyPoints, ref IList<IndecesMapping> imap)
         {
             SURFDetector fastCPU = new SURFDetector(HESSIAN_TRESH, NON_MAXIMAL_SUPRESSION);
-            Matrix<int> indices;
+            Matrix<int> indices = new Matrix<int>(dbDescriptors.Rows, 2);
+            var dists = new Matrix<float>(dbDescriptors.Rows, 2);
 
             BriefDescriptorExtractor descriptor = new BriefDescriptorExtractor();
 
             Matrix<byte> mask;
 
             // extract features from the observed image
+
+            var flannIndex = new Index(unknownDescriptors, 4);
+            flannIndex.KnnSearch(dbDescriptors, indices, dists, 2, 24);
+            for (int i = 0; i < indices.Rows; i++)
+            {
+                // filter out all inadequate pairs based on distance between pairs
+                if (dists.Data[i, 0] < (0.6 * dists.Data[i, 1]))
+                {
+                    // find image from the db to which current descriptor range belongs and increment similarity value.
+                    // in the actual implementation this should be done differently as it's not very efficient for large image collections.
+                    foreach (var img in imap)
+                    {
+                        if (img.IndexStart <= i && img.IndexEnd >= i)
+                        {
+                            img.Similarity++;
+                            break;
+                        }
+                    }
+                }
+            }
+
             BruteForceMatcher<float> matcher = new BruteForceMatcher<float>(BFM_OPTION);
             matcher.Add(unknownDescriptors);
 
