@@ -24,28 +24,25 @@ namespace facerecognition
         {
             int count = 0;
             int errors = 0;
+
             Stopwatch stopwatch = new Stopwatch();
-
-
-            stopwatch.Start();
-            Program.database = Program.ExtractDatabase(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location));
-            stopwatch.Stop();
-            long t = stopwatch.ElapsedMilliseconds;
-
+            long totalTime = 0;
+            //Program.database = Program.ExtractDatabase(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location));
 
             foreach (var file in Directory.GetFiles(@"C:\Users\Maxime\Downloads\yalefaces\yalefacesunique", "*.gif"))
             {
                 var fileName = Path.GetFileName(file);
 
 
-                stopwatch.Start();
-                var identification = Program.IdentifyAverageCommonKeypointFast(file, false);
+                
+                //Program.database = Program.ExtractDatabase(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location));
+                stopwatch.Restart();
+                //var identification = Program.IdentifyAverageCommonKeypointFast(file, false);
+                var identification = Program.IdentifyAverageCommonKeypointFastWithoutDb(file);
                 stopwatch.Stop();
                 long t2 = stopwatch.ElapsedMilliseconds;
-
-
-                
-                Console.Out.WriteLine(fileName + " = " + identification.ToString());
+                totalTime += t2;
+                Console.Out.WriteLine(fileName + " = " + identification.ToString() + "\t\t Time = " + t2);
                 if (Convert.ToInt32(fileName.Substring(7, 2)) != identification)
                 {
                     Console.Out.WriteLine("\t\t\t\tERROR");
@@ -55,9 +52,11 @@ namespace facerecognition
                 count++;
             }
 
-            Console.Out.WriteLine("\t\t\t\tResult = " + (100.0f - (100.0f*((float)errors / (float)count))).ToString());
+            Console.Out.WriteLine("\t\t\t\tResult = " + (100.0f - (100.0f * ((float)errors / (float)count))).ToString());
+            Console.Out.WriteLine("\t\t\t\tTime = " + (float)((float)(totalTime)/(float)(count)));
 
             Debug.Print("\t\t\t\tResult = " + (100.0f - (100.0f * ((float)errors / (float)count))).ToString());
+            Debug.Print("\t\t\t\tTime = " + (float)((float)(totalTime) / (float)(count)));
         }
 
         public static void testAverageKeypoint()
