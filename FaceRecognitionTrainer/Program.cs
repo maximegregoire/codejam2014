@@ -74,7 +74,7 @@ namespace FaceRecognitionTrainer
 
         static PhotoAnalysisData AnalyzePhoto(string photoPath)
         {
-            var fastCPU = new FastDetector(facerecognition.Program.FAST_TRESHOLD, facerecognition.Program.NON_MAXIMAL_SUPRESSION);
+            var fastCPU = new FastDetector(facerecognition.facerecognition.FAST_TRESHOLD, facerecognition.facerecognition.NON_MAXIMAL_SUPRESSION);
             var descriptor = new BriefDescriptorExtractor();
             
             Image<Gray, Byte> modelImage = new Image<Gray, byte>(photoPath);
