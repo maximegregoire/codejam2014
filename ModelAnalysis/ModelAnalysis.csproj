@@ -7,8 +7,8 @@
     <ProjectGuid>{F6335414-76A4-4DAA-8DB2-52F4EE28DCDE}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>ModelAnalysisSerializer</RootNamespace>
-    <AssemblyName>ModelAnalysisSerializer</AssemblyName>
+    <RootNamespace>ModelAnalysis</RootNamespace>
+    <AssemblyName>ModelAnalysis</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
@@ -48,6 +48,7 @@
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -55,8 +56,12 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ModelAnalyzers\Fast2.cs" />
+    <Compile Include="ModelAnalyzers\IModelAnalyzer.cs" />
     <Compile Include="ModelAnalysisData.cs" />
+    <Compile Include="ModelAnalyzers\SURF500.cs" />
     <Compile Include="PhotoAnalysisData.cs" />
+    <Compile Include="PhotoAnalyzers\IPhotoAnalyzer.cs" />
     <Compile Include="Serializer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

@@ -9,9 +9,9 @@ using System.Threading.Tasks;
 
 namespace ModelAnalysis
 {
-    public class PhotoAnalysisData
+    public class PhotoAnalysisData<TDepth> where TDepth : new()
     {
         public MKeyPoint[] keypoints;
-        public Matrix<byte> descriptors;
+        public Matrix<TDepth> descriptors;
     }
 }
