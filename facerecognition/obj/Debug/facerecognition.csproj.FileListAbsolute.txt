@@ -1,6 +1,5 @@
 c:\users\maxime\documents\visual studio 2013\Projects\facerecognition\facerecognition\bin\Debug\facerecognition.exe.config
 C:\CodeJam\facerecognition\bin\Debug\facerecognition.exe.config
-C:\CodeJam\facerecognition\obj\Debug\facerecognition.csprojResolveAssemblyReference.cache
 C:\CodeJam\facerecognition\bin\Debug\facerecognition.exe
 C:\CodeJam\facerecognition\bin\Debug\facerecognition.pdb
 C:\CodeJam\facerecognition\obj\Debug\facerecognition.exe
@@ -13,5 +12,4 @@ C:\Users\Admin\Documents\GitHub\codejam2014\facerecognition\obj\Debug\facerecogn
 C:\Users\Admin\Documents\GitHub\codejam2014\facerecognition\obj\Debug\facerecognition.pdb
 C:\Users\Admin\Documents\GitHub\codejam2014\facerecognition\bin\Debug\ModelAnalysis.dll
 C:\Users\Admin\Documents\GitHub\codejam2014\facerecognition\bin\Debug\ModelAnalysis.pdb
-C:\CodeJam\facerecognition\bin\Debug\ModelAnalysis.dll
-C:\CodeJam\facerecognition\bin\Debug\ModelAnalysis.pdb
+C:\CodeJam\facerecognition\obj\Debug\facerecognition.csprojResolveAssemblyReference.cache
