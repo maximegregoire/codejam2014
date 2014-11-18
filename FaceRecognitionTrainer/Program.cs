@@ -1,67 +1,78 @@
 ﻿using Emgu.CV;
-using Emgu.CV.Features2D;
 using Emgu.CV.Structure;
-using Emgu.CV.Util;
-using ModelAnalysis;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
-using System.Xml.Serialization;
 
-namespace FaceRecognitionTrainer
+namespace FaceFinder
 {
     class Program
     {
+        private const string RESOURCE_PATH = "resources";
+        private const string FACE_CLASSIFIER_PATH = RESOURCE_PATH + @"\faceClassifier.xml";
+        private const string DEFAULT_INPUT_FOLDER = "input";
+        private const string DEFAULT_OUTPUT_FOLDER = "output";
+
         static void Main(string[] args)
         {
-            string currentFolder = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
-            string trainingDatasetFolder = Path.Combine(currentFolder, "training dataset");
-            string databaseFolder = Path.Combine(currentFolder, "Database");
-            string assemblyName = System.Reflection.Assembly.GetAssembly(typeof(ModelAnalysisData<float>)).GetName().Name;
-            string typeName = "SURF500";
+            string inputFolder = DEFAULT_INPUT_FOLDER;
+            string outputFolder = DEFAULT_OUTPUT_FOLDER;
 
-            if (args.Length > 0) trainingDatasetFolder = args[0];
-            if (args.Length > 1) databaseFolder = args[1];
-            if (args.Length > 2) typeName = args[2];
-            
-            
-            var modelAnalyzer = Activator.CreateInstance(assemblyName, "ModelAnalysis.ModelAnalyzers." + typeName).Unwrap();
+            if (args.Length >= 1) inputFolder = args[0];
+            if (args.Length >= 2) outputFolder = args[1];
 
-            Type modelAnalyzerType = modelAnalyzer.GetType();
-            MethodInfo analyzeModelMethod = modelAnalyzerType.GetMethod("AnalyzeModel");
+            FindFaces(inputFolder, outputFolder);
+        }
 
-            Directory.CreateDirectory(databaseFolder);
+        static void FindFaces(string inputFolder, string outputFolder)
+        {
+            Directory.CreateDirectory(outputFolder);
 
-            var subjectPhotos = GetSubjectPhotos(trainingDatasetFolder);
-
-            foreach (var group in subjectPhotos.GroupBy(pair => pair.Key))
+            foreach (var file in Directory.GetFiles(inputFolder, "*.gif"))
             {
-                int subjectId = group.Key;
+                var colorImage = new Image<Rgb, byte>(file);
+                colorImage.ROI = FindFaceRect(colorImage);
 
-                var subjectModel = analyzeModelMethod.Invoke(modelAnalyzer, new object[]{subjectId, group.SelectMany(el => el.Value).ToArray()});
+                var grayFace = new Image<Gray, byte>(colorImage.Bitmap);
 
-            
-                ModelAnalysisDataSerializer.WriteModelAnalysisData(databaseFolder, subjectModel, subjectId);
+                grayFace.Save(Path.Combine(outputFolder, Path.GetFileName(file)));
             }
         }
 
-        static Dictionary<int, List<string>> GetSubjectPhotos(string targetPath)
+        static Rectangle FindFaceRect(Image<Rgb, byte> image)
         {
-            Dictionary<int, List<string>> subjectPhotos = new Dictionary<int, List<string>>();
+            //Find the first red byte indicative of the face border
+            int i = 0;
+            var b = image.Bytes;
+            for (; i < b.Length && (b[i] != 255 || b[i+1] != 0 || b[i+2] != 0); i += 3) ;
 
-            foreach (var file in Directory.GetFiles(targetPath, "*.gif").Select(path => Path.GetFileName(path)))
-            {
-                int subjectId = Convert.ToInt32(file.Substring(0, file.IndexOf("_")));
-                if (!subjectPhotos.ContainsKey(subjectId)) subjectPhotos.Add(subjectId, new List<string>());
+            if (i == b.Length) throw new ArgumentException("Image does not contain a face rectangle!");
 
-                subjectPhotos[subjectId].Add(Path.Combine(targetPath, file));
-            }
+            //Register top left corner of face rect;
+            var faceRect = new Rectangle();
+            faceRect.X = (i/3) % image.Width;
+            faceRect.Y = (i/3) / image.Width;
 
-            return subjectPhotos;
+            //Find width of face rect
+            for (; b[i] == 255 && b[i + 1] == 0 && b[i + 2] == 0; i += 3) ++faceRect.Width;
+            
+            //Find height of face rect
+            i -= 3;
+            for (; b[i] == 255 && b[i + 1] == 0 && b[i + 2] == 0; i += image.Width * 3) ++faceRect.Height;
+
+            if (faceRect.Height < 3 || faceRect.Width < 3) throw new ArgumentException("The face rectangle must contain at least one pixel!");
+
+            //Return only the interior region of the rectangle
+            faceRect.Height -= 2;
+            faceRect.Width -= 2;
+            faceRect.X += 1;
+            faceRect.Y += 1;
+
+            return faceRect;
         }
     }
 }

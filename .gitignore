@@ -7,3 +7,4 @@ bin/
 *.vspx
 *.psess
 *.user
+*.bak

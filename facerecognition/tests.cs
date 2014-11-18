@@ -19,7 +19,6 @@ using System.Windows.Forms;
 
 using Emgu.CV;
 using Emgu.CV.Structure;
-using Emgu.CV.GPU;
 using Emgu.CV.CvEnum;
 using Emgu.CV.Features2D;
 using Emgu.CV.Util;
@@ -42,12 +41,13 @@ namespace facerecognition
             Stopwatch stopwatch = new Stopwatch();
             long totalTime = 0;
 
-            foreach (var file in Directory.GetFiles(@"C:\CodeJam\photos"))
+            foreach (var file in Directory.GetFiles(@"photos"))
             {
                 var fileName = Path.GetFileName(file);
 
                 stopwatch.Restart();
-                var identification = facerecognition.IdentifyFaceWithDataset(file, @"C:\CodeJam\photos");
+                var identification = facerecognition.IdentifyFaceWithDataset(file, @"photos");
+                //var identification = facerecognition.IdentifyFaceWithDataset(file, @"DatabaseReal");
                 stopwatch.Stop();
 
                 long t2 = stopwatch.ElapsedMilliseconds;
@@ -87,6 +87,7 @@ namespace facerecognition
 
                 stopwatch.Restart();
                 var identification = facerecognition.IdentifyFaceWithDataset(file, Path.Combine(folderPath, facerecognition.trainingDataset));
+                //var identification = facerecognition.IdentifyFaceWithDataset(file, "Database");
                 stopwatch.Stop();
 
                 long t2 = stopwatch.ElapsedMilliseconds;

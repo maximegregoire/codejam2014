@@ -19,11 +19,9 @@ using System.Windows.Forms;
 
 using Emgu.CV;
 using Emgu.CV.Structure;
-using Emgu.CV.GPU;
 using Emgu.CV.CvEnum;
 using Emgu.CV.Features2D;
 using Emgu.CV.Util;
-using Emgu.CV.Flann;
 
 namespace facerecognition
 {
@@ -108,7 +106,7 @@ namespace facerecognition
         /// <param name="args">The command line argument(s)</param>
         static void Main(string[] args)
         {
-            /*
+           /* 
             if (args.Length == 0)
             {
                 Console.Out.WriteLine("You must use this program with a picture in the following form:");
@@ -128,11 +126,12 @@ namespace facerecognition
                     return;
                 }
 
-                IdentifyFaceWithDataset(args[0], trainingDataset);
-            }
-             * */
+                Console.WriteLine(IdentifyFaceWithDataset(args[0], trainingDataset));
+            }*/
 
-            Tests.testRecognitionYale();
+            //PreprocessImages("photos", "DatabaseReal");
+            //Tests.testRecognitionYale();
+            Tests.testRecognitionOnRealPhotos();
         }
 
 
@@ -202,8 +201,15 @@ namespace facerecognition
                 fastCPU = new FastDetector(FAST_TRESHOLD_ACQUIRING, NON_MAXIMAL_SUPRESSION);
                 foreach (var dbFile in dbFiles)
                 {
-                    var dbImage = TransformPicture(dbFile);
 
+                    //TODO: Remove
+                    if (Path.GetFileName(dbFile) == Path.GetFileName(filePath))
+                    {
+                        continue;
+                    }
+
+                    var dbImage = TransformPicture(dbFile);
+                    //var dbImage = new Image<Gray, byte>(dbFile);
 
                     VectorOfKeyPoint dbKeyPoints = fastCPU.DetectKeyPointsRaw(dbImage, null);
                     Matrix<Byte> dbDescriptors = descriptor.ComputeDescriptorsRaw(dbImage, null, dbKeyPoints);
