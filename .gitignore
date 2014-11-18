@@ -1,6 +1,9 @@
 .vagrant/
 machines/
-**/bin/**/*
-**/release/**/*
-**/obj/**/*
-**/obj
+obj/
+bin/
+*.suo
+*.orig
+*.vspx
+*.psess
+*.user
