@@ -22,6 +22,7 @@ using Emgu.CV.Structure;
 using Emgu.CV.CvEnum;
 using Emgu.CV.Features2D;
 using Emgu.CV.Util;
+using Database;
 
 namespace facerecognition
 {
@@ -78,27 +79,29 @@ namespace facerecognition
         /// <summary>
         /// Amount of pixel to chop off both sides of the image
         /// </summary>
-        public const int CROP_WIDTH = 10;
+        public const int CROP_WIDTH = 30;
 
         /// <summary>
         /// Amount of pixel to chop off of the bottom of the image
         /// </summary>
-        public const int CROP_HEIGHT_BOTTOM = 0;
+        public const int CROP_HEIGHT_BOTTOM = 30;
 
         /// <summary>
         /// Amount of pixel to chop off of the top of the image
         /// </summary>
-        public const int CROP_HEIGHT_TOP = 0;
+        public const int CROP_HEIGHT_TOP = 30;
 
         /// <summary>
         /// Amount by which the image will be scaled (1 = original size, 0.5 = 50%, 2 = 200%, etc..)
         /// </summary>
-        public const float IMAGE_SCALING_FACTOR = 0.625f;
+        public const float IMAGE_SCALING_FACTOR = 0.55f;
 
         /// <summary>
         /// Threshold for the amout of significant keypoint matches
         /// </summary>
         public const int SIGNIFICANT_KEYPOINT_THRESHOLD = 4;
+
+        static Dictionary<int, SubjectModelDataCollection<byte>> db;
 
         /// <summary>
         /// The entry point of the code
@@ -129,9 +132,13 @@ namespace facerecognition
                 Console.WriteLine(IdentifyFaceWithDataset(args[0], trainingDataset));
             }*/
 
+            db = Serializer.ReadDatabase<byte>("database_v2");
+
             //PreprocessImages("photos", "DatabaseReal");
             //Tests.testRecognitionYale();
-            Tests.testRecognitionOnRealPhotos();
+            if (args.Length > 0 && args[0] == "old") Tests.testRecognitionOnRealPhotos(false);
+            else Tests.testRecognitionOnRealPhotos(true);
+            
         }
 
 
@@ -203,10 +210,11 @@ namespace facerecognition
                 {
 
                     //TODO: Remove
+                    /*
                     if (Path.GetFileName(dbFile) == Path.GetFileName(filePath))
                     {
                         continue;
-                    }
+                    }*/
 
                     var dbImage = TransformPicture(dbFile);
                     //var dbImage = new Image<Gray, byte>(dbFile);
@@ -235,6 +243,64 @@ namespace facerecognition
 
                 return dictionary.Aggregate((l, r) => l.Value.AverageCommonKeypoints > r.Value.AverageCommonKeypoints ? l : r).Key;
             }
+        }
+
+        public static int IdentifyFaceWithDatabase(string filePath)
+        {
+            var observedImage = new Image<Gray, byte>(filePath);
+
+            var dictionary = new Dictionary<int, Person>();
+
+            //var orb = new ORBDetector(500);
+            //var surf = new SURFDetector(500, true);
+            //var brisk = new Brisk(1, 3, 1.0f);
+            var fast = new FastDetector(1, true);
+            //var freak = new Freak(true, true, 22.0f, 3);
+            var brief = new BriefDescriptorExtractor();
+
+            var observedKeypoints = fast.DetectKeyPointsRaw(observedImage, null);
+            var observedDescriptors = brief.ComputeDescriptorsRaw(observedImage, null, observedKeypoints);
+
+            foreach (var subjectId in db.Keys)
+            {
+                var models = db[subjectId].models;
+
+                foreach (var model in models)
+                {
+                    Matrix<int> indices;
+                    Matrix<byte> mask;
+
+                    //Try to match the features
+                    BruteForceMatcher<byte> matcher = new BruteForceMatcher<byte>(DistanceType.Hamming);
+                    matcher.Add(model.descriptors);
+
+                    indices = new Matrix<int>(observedDescriptors.Rows, 10);
+                    using (Matrix<float> dist = new Matrix<float>(observedDescriptors.Rows, 10))
+                    {
+                        matcher.KnnMatch(observedDescriptors, indices, dist, 10, null);
+                        mask = new Matrix<byte>(dist.Rows, 1);
+                        mask.SetValue(255);
+                        Features2DToolbox.VoteForUniqueness(dist, 0.6, mask);
+                    }
+
+                    var kpModel = new VectorOfKeyPoint();
+                    kpModel.Push(model.keypoints);
+                    int numOfKeypoints = CvInvoke.cvCountNonZero(mask);
+                    if (numOfKeypoints > 0)
+                    {
+                        numOfKeypoints = Features2DToolbox.VoteForSizeAndOrientation(kpModel, observedKeypoints, indices, mask, 1.5, 20);
+                    }
+
+                    if (!dictionary.ContainsKey(subjectId))
+                    {
+                        dictionary.Add(subjectId, new Person(subjectId));
+                    }
+
+                    dictionary[subjectId].AddComparison(numOfKeypoints);
+                }
+            }
+
+            return dictionary.Aggregate((l, r) => l.Value.AverageCommonKeypoints > r.Value.AverageCommonKeypoints ? l : r).Key;
         }
 
         /// <summary>

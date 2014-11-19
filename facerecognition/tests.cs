@@ -33,7 +33,7 @@ namespace facerecognition
         /// <summary>
         /// Tests the recognition program on all of the real photos
         /// </summary>
-        public static void testRecognitionOnRealPhotos()
+        public static void testRecognitionOnRealPhotos(bool newVersion)
         {
             int count = 0;
             int errors = 0;
@@ -46,7 +46,15 @@ namespace facerecognition
                 var fileName = Path.GetFileName(file);
 
                 stopwatch.Restart();
-                var identification = facerecognition.IdentifyFaceWithDataset(file, @"photos");
+                var identification = 0;
+                if (newVersion)
+                {
+                    identification = facerecognition.IdentifyFaceWithDatabase(file);
+                }
+                else
+                {
+                    identification = facerecognition.IdentifyFaceWithDataset(file, @"photos_training");
+                }
                 //var identification = facerecognition.IdentifyFaceWithDataset(file, @"DatabaseReal");
                 stopwatch.Stop();
 
