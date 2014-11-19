@@ -69,11 +69,11 @@ namespace FaceRecognitionTrainer
                 //Extract keypoints for these regions only
                 var plainImage = new Image<Gray, byte>(plainImagePath);
 
-                var fast = new FastDetector(1, true);
+                //var fast = new FastDetector(1, true);
                 //var orb = new ORBDetector(500);
-                //var brisk = new Brisk(1, 3, 1.5f);
+                var brisk = new Brisk(1, 3, 1.0f);
                 //var surf = new SURFDetector(500, true);
-                var keypoints = fast.DetectKeyPointsRaw(plainImage, mask);
+                var keypoints = brisk.DetectKeyPointsRaw(plainImage, mask);
 
                 //For debugging purposes, draw the keypoints to an actual image and save it
                 var o = Features2DToolbox.DrawKeypoints(plainImage, keypoints, new Bgr(Color.Blue), Features2DToolbox.KeypointDrawType.DRAW_RICH_KEYPOINTS);
@@ -82,7 +82,7 @@ namespace FaceRecognitionTrainer
                 //Get descriptors
                 //var freak = new Freak(true, true, 22.0f, 3);
                 var brief = new BriefDescriptorExtractor();
-                var descriptors = brief.ComputeDescriptorsRaw(plainImage, null, keypoints);
+                var descriptors = brisk.ComputeDescriptorsRaw(plainImage, null, keypoints);
 
                 //Add the gathered data to the database
                 int subjectId = Convert.ToInt32(fileNameWithoutExt.Split('_')[0]);
@@ -159,15 +159,15 @@ namespace FaceRecognitionTrainer
         {
             var observedImage = new Image<Gray, byte>(fileName);
 
-            var fast = new FastDetector(1, true);
+            //var fast = new FastDetector(1, true);
             //var orb = new ORBDetector(500);
             //var surf = new SURFDetector(500, true);
-            //var brisk = new Brisk(1, 3, 1.5f);
+            var brisk = new Brisk(1, 3, 1.0f);
             //var freak = new Freak(true, true, 22.0f, 1);
-            var brief = new BriefDescriptorExtractor();
+            //var brief = new BriefDescriptorExtractor();
 
-            var kpObserved = fast.DetectKeyPointsRaw(observedImage, null);
-            var descObserved = brief.ComputeDescriptorsRaw(observedImage, null, kpObserved);
+            var kpObserved = brisk.DetectKeyPointsRaw(observedImage, null);
+            var descObserved = brisk.ComputeDescriptorsRaw(observedImage, null, kpObserved);
 
             Features2DToolbox.DrawKeypoints(observedImage, kpObserved, new Bgr(Color.Blue), Features2DToolbox.KeypointDrawType.DRAW_RICH_KEYPOINTS).Save("img.bmp");
 
@@ -194,7 +194,7 @@ namespace FaceRecognitionTrainer
                         matcher.KnnMatch(descObserved, indices, dist, 10, null);
                         mask = new Matrix<byte>(dist.Rows, 1);
                         mask.SetValue(255);
-                        Features2DToolbox.VoteForUniqueness(dist, 0.6, mask);
+                        Features2DToolbox.VoteForUniqueness(dist, 0.7, mask);
                     }
                     
                     var kpModel = new VectorOfKeyPoint();

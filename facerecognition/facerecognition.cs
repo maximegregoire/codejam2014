@@ -253,13 +253,13 @@ namespace facerecognition
 
             //var orb = new ORBDetector(500);
             //var surf = new SURFDetector(500, true);
-            //var brisk = new Brisk(1, 3, 1.0f);
-            var fast = new FastDetector(1, true);
+            var brisk = new Brisk(1, 3, 1.0f);
+            //var fast = new FastDetector(1, true);
             //var freak = new Freak(true, true, 22.0f, 3);
-            var brief = new BriefDescriptorExtractor();
+            //var brief = new BriefDescriptorExtractor();
 
-            var observedKeypoints = fast.DetectKeyPointsRaw(observedImage, null);
-            var observedDescriptors = brief.ComputeDescriptorsRaw(observedImage, null, observedKeypoints);
+            var observedKeypoints = brisk.DetectKeyPointsRaw(observedImage, null);
+            var observedDescriptors = brisk.ComputeDescriptorsRaw(observedImage, null, observedKeypoints);
 
             foreach (var subjectId in db.Keys)
             {
@@ -280,7 +280,7 @@ namespace facerecognition
                         matcher.KnnMatch(observedDescriptors, indices, dist, 10, null);
                         mask = new Matrix<byte>(dist.Rows, 1);
                         mask.SetValue(255);
-                        Features2DToolbox.VoteForUniqueness(dist, 0.6, mask);
+                        Features2DToolbox.VoteForUniqueness(dist, 0.7, mask);
                     }
 
                     var kpModel = new VectorOfKeyPoint();
@@ -288,7 +288,7 @@ namespace facerecognition
                     int numOfKeypoints = CvInvoke.cvCountNonZero(mask);
                     if (numOfKeypoints > 0)
                     {
-                        numOfKeypoints = Features2DToolbox.VoteForSizeAndOrientation(kpModel, observedKeypoints, indices, mask, 1.5, 20);
+                        //numOfKeypoints = Features2DToolbox.VoteForSizeAndOrientation(kpModel, observedKeypoints, indices, mask, 1.5, 20);
                     }
 
                     if (!dictionary.ContainsKey(subjectId))
