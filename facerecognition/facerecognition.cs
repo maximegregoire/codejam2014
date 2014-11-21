@@ -69,7 +69,12 @@ namespace facerecognition
         /// <summary>
         /// The name of the training dataset folder
         /// </summary>
-        public const string trainingDataset = "training dataset";
+        public const string preprocessedDataset = "preprocessed_dataset";
+
+        /// <summary>
+        /// The name of the training dataset folder
+        /// </summary>
+        public const string unprocessedDataset = "unprocessed_dataset";
 
         /// <summary>
         /// The configuration for the distance type of the brute-force matcher
@@ -119,7 +124,7 @@ namespace facerecognition
         /// <param name="args">The command line argument(s)</param>
         static void Main(string[] args)
         {
-           /* 
+           
             if (args.Length == 0)
             {
                 Console.Out.WriteLine("You must use this program with a picture in the following form:");
@@ -138,18 +143,35 @@ namespace facerecognition
                     Console.Out.WriteLine("The specified file is not an image.");
                     return;
                 }
+                Stopwatch s = new Stopwatch();
+                s.Reset();
+                s.Start();
+                var identification = 0;
+                if (args.Length > 1 && args[1] == "preprocess")
+                {
+                    identification = IdentifyFaceWithDataset(args[0], preprocessedDataset, true);
+                }
+                else
+                {
+                    identification = IdentifyFaceWithDataset(args[0], unprocessedDataset, false);
+                }
+                s.Stop();
+                //Console.WriteLine(s.ElapsedMilliseconds);
+                if (identification == -1)
+                    Console.WriteLine("No match found");
+                else
+                    Console.WriteLine(identification);
+                
+            }
 
-                Console.WriteLine(IdentifyFaceWithDataset(args[0], trainingDataset));
-            }*/
-
-            db = Serializer.ReadDatabase<byte>("database_v2");
+            //db = Serializer.ReadDatabase<byte>("database_v2");
 
             //PreprocessImages("photos", "DatabaseReal");
             //Tests.testRecognitionYale();
             //if (args.Length > 0 && args[0] == "old") Tests.testRecognitionOnRealPhotos(false);
             //else Tests.testRecognitionOnRealPhotos(true);
 
-            Tests.testRecognitionOnRealPhotos(false);
+            //Tests.testRecognitionOnRealPhotos(false);
             //PreprocessImages("photos_training", "preprocessed");
         }
 
@@ -202,7 +224,7 @@ namespace facerecognition
         /// <param name="filePath">full path of the picture to identify</param>
         /// <param name="datasetPath">full path of the training dataset</param>
         /// <returns>The ID of the face on the picture</returns>
-        public static int IdentifyFaceWithDataset(string filePath, string datasetPath)
+        public static int IdentifyFaceWithDataset(string filePath, string datasetPath, bool preprocessed)
         {
             var dbFiles = Directory.GetFiles(datasetPath).Where(f => f.EndsWith(".gif") || f.EndsWith(".GIF") || f.EndsWith(".bmp") || f.EndsWith(".BMP") || f.EndsWith(".jpg") || f.EndsWith(".JPG") || f.EndsWith(".PNG") || f.EndsWith(".png"));
             var dictionary = new Dictionary<int, Person>();
@@ -213,7 +235,7 @@ namespace facerecognition
             {
                 //var unknownImage = TransformPicture(filePath);
                 var unknownImageBmp = new Bitmap(filePath);
-                //unknownImageBmp = CheckUnknowImageSize(unknownImageBmp);
+                unknownImageBmp = CheckUnknowImageSize(unknownImageBmp);
                 var unknownImage = TransformPicture(unknownImageBmp);
 
                 unknownKeyPoints = fastCPU.DetectKeyPointsRaw(unknownImage, null);
@@ -224,13 +246,21 @@ namespace facerecognition
                 {
 
                     //TODO: Remove
+                    /*
                     if (Path.GetFileName(dbFile) == Path.GetFileName(filePath))
                     {
                         continue;
-                    }
+                    }*/
 
-                    //var dbImage = TransformPicture(dbFile);
-                    var dbImage = new Image<Gray, byte>(dbFile);
+                    Image<Gray, byte> dbImage = null;
+                    if (preprocessed)
+                    {
+                        dbImage = new Image<Gray, byte>(dbFile);
+                    }
+                    else
+                    {
+                        dbImage = TransformPicture(new Bitmap(dbFile));
+                    } 
 
                     VectorOfKeyPoint dbKeyPoints = fastCPU.DetectKeyPointsRaw(dbImage, null);
                     Matrix<Byte> dbDescriptors = descriptor.ComputeDescriptorsRaw(dbImage, null, dbKeyPoints);
@@ -254,23 +284,7 @@ namespace facerecognition
 
                 }
 
-
-                //Compute standard deviation
-                /*
-                double mean = dictionary.Sum(e => e.Value.AverageCommonKeypoints) / dictionary.Count;
-                double variance = dictionary.Sum(e => Math.Pow(e.Value.AverageCommonKeypoints - mean, 2)) / dictionary.Count;
-                double stddev = Math.Sqrt(variance);
-
-                
-
-                int choice = dictionary.Aggregate((l, r) => l.Value.AverageCommonKeypoints > r.Value.AverageCommonKeypoints ? l : r).Key;
-
-                double value = dictionary[choice].AverageCommonKeypoints;
-                double diff = value - mean;
-                Console.WriteLine("Mean: {0:n2}, Std dev: {1:n2}, Value: {2:n2}, Diff: {3:n2}, Ratio: {4:n2}" , mean, stddev, value, diff, diff / stddev);
-                */
-
-                Console.Out.WriteLine("kp of " + filePath + " : " + dictionary.Aggregate((l, r) => l.Value.AverageCommonKeypoints > r.Value.AverageCommonKeypoints ? l : r).Value.AverageCommonKeypoints);
+                //Console.Out.WriteLine("kp of " + filePath + " : " + dictionary.Aggregate((l, r) => l.Value.AverageCommonKeypoints > r.Value.AverageCommonKeypoints ? l : r).Value.AverageCommonKeypoints);
 
                 if (dictionary.Aggregate((l, r) => l.Value.AverageCommonKeypoints > r.Value.AverageCommonKeypoints ? l : r).Value.AverageCommonKeypoints < 35.0f)
                 {
@@ -279,115 +293,6 @@ namespace facerecognition
 
                 return dictionary.Aggregate((l, r) => l.Value.AverageCommonKeypoints > r.Value.AverageCommonKeypoints ? l : r).Key;
             }
-        }
-
-        public static int IdentifyFaceWithDatabase(string filePath)
-        {
-            var observedImage = new Image<Gray, byte>(filePath);
-
-            var dictionary = new Dictionary<int, Person>();
-
-            //var orb = new ORBDetector(500);
-            //var surf = new SURFDetector(25, true);
-            //var brisk = new Brisk(30, 3, 1.0f);
-            var fast = new FastDetector(5, true);
-            //var freak = new Freak(true, true, 22.0f, 3);
-            var brief = new BriefDescriptorExtractor();
-
-            var observedKeypoints = fast.DetectKeyPointsRaw(observedImage, null);
-            var observedDescriptors = brief.ComputeDescriptorsRaw(observedImage, null, observedKeypoints);
-
-            foreach (var subjectId in db.Keys)
-            {
-                var nbCommonRejected = 0;
-                var models = db[subjectId].models;
-
-                foreach (var model in models)
-                {
-                    /*
-                    if (model.modelId == Convert.ToInt32(Path.GetFileName(filePath).Split('_')[1]) && subjectId == Convert.ToInt32(Path.GetFileName(filePath).Split('_')[0]))
-                    {
-                        continue;
-                    }*/
-                    Matrix<int> indices;
-                    Matrix<byte> mask;
-
-                    //Try to match the features
-                    BruteForceMatcher<byte> matcher = new BruteForceMatcher<byte>(DistanceType.Hamming);
-                    matcher.Add(model.descriptors);
-
-                    indices = new Matrix<int>(observedDescriptors.Rows, 5);
-                    Matrix<float> dist = new Matrix<float>(observedDescriptors.Rows, 5);
-                 
-                    matcher.KnnMatch(observedDescriptors, indices, dist, 5, null);
-                    mask = new Matrix<byte>(dist.Rows, 1);
-                    mask.SetValue(255);
-                    Features2DToolbox.VoteForUniqueness(dist, 0.8, mask);
-                    
-
-                    var kpModel = new VectorOfKeyPoint();
-                    kpModel.Push(model.keypoints);
-                    int numOfKeypoints = CvInvoke.cvCountNonZero(mask);
-                    if (numOfKeypoints > 0)
-                    {
-                        numOfKeypoints = Features2DToolbox.VoteForSizeAndOrientation(kpModel, observedKeypoints, indices, mask, 1.5, 10);
-                    }
-
-                    //Vote for dist
-                    /*
-                    for (int i = 0; i < mask.Rows; ++i)
-                    {
-                        if (dist[i,0] > 30)
-                        {
-                            mask[i, 0] = 0;
-                        }
-                    }*/
-
-                    /*
-                    //Vote for no-common keypoints
-                    for (int i = 0; i < observedKeypoints.Size; ++i)
-                    {
-                        if (mask[i, 0] == 255)
-                        {
-                            var crossOver = model.numberOfCrossTestHits[indices[i, 0]];
-                            if (crossOver > 0)
-                            {
-                                nbCommonRejected += crossOver;
-                                mask[i, 0] = 0;
-                            }
-                            //Console.WriteLine(model.numberOfCrossTestHits[indices[i, 0]]);
-                            //numOfKeypoints += 5 - model.numberOfCrossTestHits[indices[i, 0]];
-                        }
-                    }*/
-
-                    //var homography = Features2DToolbox.GetHomographyMatrixFromMatchedFeatures(kpModel, observedKeypoints, indices, mask, 2);
-                    
-
-                    //Total dist
-                    float totalDist = 0;
-                    int nbElems = 0;
-                    for (int i = 0; i < mask.Rows; ++i)
-                    {
-                        if (mask[i,0] > 0)
-                        {
-                            totalDist += dist[i,0];
-                            nbElems++;
-                        }
-                    }
-
-                    numOfKeypoints = CvInvoke.cvCountNonZero(mask);
-
-                    if (!dictionary.ContainsKey(subjectId))
-                    {
-                        dictionary.Add(subjectId, new Person(subjectId));
-                    }
-
-                    dictionary[subjectId].AddComparison((int)(totalDist / nbElems));
-                }
-            }
-
-
-            return dictionary.Aggregate((l, r) => l.Value.AverageCommonKeypoints > r.Value.AverageCommonKeypoints ? l : r).Key;
         }
 
         /// <summary>

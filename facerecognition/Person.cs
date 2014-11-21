@@ -29,6 +29,7 @@ namespace facerecognition
             this.Id = id;
             this.AmountOfPictures = 0;
             this.SumOfCommonKeyPoints = 0;
+            nbCommon = new List<int>();
         }
 
         /// <summary>
@@ -40,6 +41,8 @@ namespace facerecognition
         /// The amount of pictures compared
         /// </summary>
         public int AmountOfPictures { get; private set; }
+
+        public List<int> nbCommon { get; set; }
 
         /// <summary>
         /// Gets the average number of common keypoints
@@ -65,6 +68,7 @@ namespace facerecognition
         {
             SumOfCommonKeyPoints += commonKeypoints;
             AmountOfPictures++;
+            nbCommon.Add(commonKeypoints);
         }
     }
 }

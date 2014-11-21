@@ -49,13 +49,14 @@ namespace facerecognition
                 var identification = 0;
                 if (newVersion)
                 {
-                    identification = facerecognition.IdentifyFaceWithDatabase(file);
+                    //identification = facerecognition.IdentifyFaceWithDatabase(file);
                 }
                 else
                 {
-                    identification = facerecognition.IdentifyFaceWithDataset(file, @"photos_training");
+                    identification = facerecognition.IdentifyFaceWithDataset(file, @"preprocessed", true);
+                    //identification = facerecognition.IdentifyFaceWithDataset(file, @"photos_training");
                 }
-                //var identification = facerecognition.IdentifyFaceWithDataset(file, @"DatabaseReal");
+                
                 stopwatch.Stop();
 
                 long t2 = stopwatch.ElapsedMilliseconds;
@@ -94,7 +95,7 @@ namespace facerecognition
                 var fileName = Path.GetFileName(file);
 
                 stopwatch.Restart();
-                var identification = facerecognition.IdentifyFaceWithDataset(file, Path.Combine(folderPath, facerecognition.trainingDataset));
+                var identification = facerecognition.IdentifyFaceWithDataset(file, Path.Combine(folderPath, facerecognition.preprocessedDataset), true);
                 //var identification = facerecognition.IdentifyFaceWithDataset(file, "Database");
                 stopwatch.Stop();
 

@@ -263,7 +263,7 @@ namespace FaceRecognitionTrainer
 
             var termCrit = new MCvTermCriteria(imgs.Count, 0.001);
 
-            var eigen = new EigenObjectRecognizer(imgs.ToArray(), labels.ToArray(), 5000, ref termCrit);
+            var eigen = new EigenObjectRecognizer(imgs.ToArray(), labels.ToArray(), 4500, ref termCrit);
 
             foreach (var file in Directory.GetFiles(photoPath, "*.bmp"))
             {
@@ -296,14 +296,14 @@ namespace FaceRecognitionTrainer
                     var fast = new FastDetector(5, true);
                     var brief = new BriefDescriptorExtractor();
 
-                    int result = MatchFace(scaledObservedImage, trainingPath, fast, brief, DistanceType.Hamming);
+                    int result = MatchFace(scaledObservedImage, "fast_set", fast, brief, DistanceType.Hamming);
                     Console.WriteLine("{0}  ==> {1}", observedImagePath, result);
 
                     return;
                 }
                 else
                 {
-                    currentScale += 0.05;
+                    currentScale += 0.025;
                 }
             }
 
@@ -350,10 +350,10 @@ namespace FaceRecognitionTrainer
                         foundSpots.Add(new KeyValuePair<EigenObjectRecognizer.RecognitionResult, KeyValuePair<int, int>>(match, new KeyValuePair<int, int>(scanRect.X, scanRect.Y)));
                     }
 
-                    scanRect.X += 2;
+                    scanRect.X += 5;
                 }
 
-                scanRect.Y += 2;
+                scanRect.Y += 5;
                 scanRect.X = 0;
             }
 
@@ -381,7 +381,7 @@ namespace FaceRecognitionTrainer
             return subjectPhotos;
         }
 
-        static int MatchFace<TDepth>(Image<Gray, byte> imageToMatch, string trainingDataset, IKeyPointDetector kp, IDescriptorExtractor<Gray, TDepth> de, DistanceType dt) where TDepth : struct
+        static int MatchFace<TDepth>(Image<Gray, byte> imageToMatch, string fastDataset, IKeyPointDetector kp, IDescriptorExtractor<Gray, TDepth> de, DistanceType dt) where TDepth : struct
         {
 
             var observedKeypoints = kp.DetectKeyPointsRaw(imageToMatch, null);
@@ -389,7 +389,7 @@ namespace FaceRecognitionTrainer
 
             var dictionary = new Dictionary<int, Person>();
 
-            foreach (var file in Directory.GetFiles(trainingDataset, "*.bmp"))
+            foreach (var file in Directory.GetFiles(fastDataset, "*.bmp"))
             {
                 var subjectId = Convert.ToInt32(Path.GetFileName(file).Split('_')[0]);
                 var modelImage = new Image<Gray, byte>(file);
