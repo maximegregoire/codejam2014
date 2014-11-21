@@ -79,27 +79,37 @@ namespace facerecognition
         /// <summary>
         /// Amount of pixel to chop off both sides of the image
         /// </summary>
-        public const int CROP_WIDTH = 30;
+        public const int CROP_WIDTH = 0;
 
         /// <summary>
         /// Amount of pixel to chop off of the bottom of the image
         /// </summary>
-        public const int CROP_HEIGHT_BOTTOM = 30;
+        public const int CROP_HEIGHT_BOTTOM = 0;
 
         /// <summary>
         /// Amount of pixel to chop off of the top of the image
         /// </summary>
-        public const int CROP_HEIGHT_TOP = 30;
+        public const int CROP_HEIGHT_TOP = 0;
 
         /// <summary>
         /// Amount by which the image will be scaled (1 = original size, 0.5 = 50%, 2 = 200%, etc..)
         /// </summary>
-        public const float IMAGE_SCALING_FACTOR = 0.55f;
+        public const float IMAGE_SCALING_FACTOR = 0.65f;
 
         /// <summary>
         /// Threshold for the amout of significant keypoint matches
         /// </summary>
         public const int SIGNIFICANT_KEYPOINT_THRESHOLD = 4;
+
+        /// <summary>
+        /// Width of the training dataset pictures
+        /// </summary>
+        public const int DB_PICTURE_WIDTH = 640;
+
+        /// <summary>
+        /// Height of the training dataset pictures
+        /// </summary>
+        public const int DB_PICTURE_HEIGHT = 480;
 
         static Dictionary<int, SubjectModelDataCollection<byte>> db;
 
@@ -136,9 +146,11 @@ namespace facerecognition
 
             //PreprocessImages("photos", "DatabaseReal");
             //Tests.testRecognitionYale();
-            if (args.Length > 0 && args[0] == "old") Tests.testRecognitionOnRealPhotos(false);
-            else Tests.testRecognitionOnRealPhotos(true);
-            
+            //if (args.Length > 0 && args[0] == "old") Tests.testRecognitionOnRealPhotos(false);
+            //else Tests.testRecognitionOnRealPhotos(true);
+
+            Tests.testRecognitionOnRealPhotos(false);
+            //PreprocessImages("photos_training", "preprocessed");
         }
 
 
@@ -172,11 +184,10 @@ namespace facerecognition
         /// </summary>
         /// <param name="picturePath">The path of the picture</param>
         /// <returns>The transformed image</returns>
-        public static Image<Gray, byte> TransformPicture(string picturePath)
+        public static Image<Gray, byte> TransformPicture(Bitmap bitmap)
         {
-            Bitmap myBitmap = new Bitmap(picturePath);
-            Rectangle cloneRect = new Rectangle(CROP_WIDTH, CROP_HEIGHT_BOTTOM, myBitmap.Width - (2 * CROP_WIDTH), myBitmap.Height - CROP_HEIGHT_BOTTOM - CROP_HEIGHT_TOP);
-            Bitmap cloneBitmap = myBitmap.Clone(cloneRect, myBitmap.PixelFormat);
+            Rectangle cloneRect = new Rectangle(CROP_WIDTH, CROP_HEIGHT_BOTTOM, bitmap.Width - (2 * CROP_WIDTH), bitmap.Height - CROP_HEIGHT_BOTTOM - CROP_HEIGHT_TOP);
+            Bitmap cloneBitmap = bitmap.Clone(cloneRect, bitmap.PixelFormat);
 
             var bmp = new Image<Gray, byte>(new Bitmap(cloneBitmap, new Size((int)(cloneBitmap.Width * IMAGE_SCALING_FACTOR), (int)(cloneBitmap.Height * IMAGE_SCALING_FACTOR))));
             var lap = bmp.Laplace(1);
@@ -200,7 +211,10 @@ namespace facerecognition
             FastDetector fastCPU = new FastDetector(FAST_TRESHOLD_PROCESSING, NON_MAXIMAL_SUPRESSION);
             using (var descriptor = new BriefDescriptorExtractor())
             {
-                var unknownImage = TransformPicture(filePath);
+                //var unknownImage = TransformPicture(filePath);
+                var unknownImageBmp = new Bitmap(filePath);
+                //unknownImageBmp = CheckUnknowImageSize(unknownImageBmp);
+                var unknownImage = TransformPicture(unknownImageBmp);
 
                 unknownKeyPoints = fastCPU.DetectKeyPointsRaw(unknownImage, null);
                 unknownDescriptors = descriptor.ComputeDescriptorsRaw(unknownImage, null, unknownKeyPoints);
@@ -210,14 +224,13 @@ namespace facerecognition
                 {
 
                     //TODO: Remove
-                    /*
                     if (Path.GetFileName(dbFile) == Path.GetFileName(filePath))
                     {
                         continue;
-                    }*/
+                    }
 
-                    var dbImage = TransformPicture(dbFile);
-                    //var dbImage = new Image<Gray, byte>(dbFile);
+                    //var dbImage = TransformPicture(dbFile);
+                    var dbImage = new Image<Gray, byte>(dbFile);
 
                     VectorOfKeyPoint dbKeyPoints = fastCPU.DetectKeyPointsRaw(dbImage, null);
                     Matrix<Byte> dbDescriptors = descriptor.ComputeDescriptorsRaw(dbImage, null, dbKeyPoints);
@@ -241,6 +254,29 @@ namespace facerecognition
 
                 }
 
+
+                //Compute standard deviation
+                /*
+                double mean = dictionary.Sum(e => e.Value.AverageCommonKeypoints) / dictionary.Count;
+                double variance = dictionary.Sum(e => Math.Pow(e.Value.AverageCommonKeypoints - mean, 2)) / dictionary.Count;
+                double stddev = Math.Sqrt(variance);
+
+                
+
+                int choice = dictionary.Aggregate((l, r) => l.Value.AverageCommonKeypoints > r.Value.AverageCommonKeypoints ? l : r).Key;
+
+                double value = dictionary[choice].AverageCommonKeypoints;
+                double diff = value - mean;
+                Console.WriteLine("Mean: {0:n2}, Std dev: {1:n2}, Value: {2:n2}, Diff: {3:n2}, Ratio: {4:n2}" , mean, stddev, value, diff, diff / stddev);
+                */
+
+                Console.Out.WriteLine("kp of " + filePath + " : " + dictionary.Aggregate((l, r) => l.Value.AverageCommonKeypoints > r.Value.AverageCommonKeypoints ? l : r).Value.AverageCommonKeypoints);
+
+                if (dictionary.Aggregate((l, r) => l.Value.AverageCommonKeypoints > r.Value.AverageCommonKeypoints ? l : r).Value.AverageCommonKeypoints < 35.0f)
+                {
+                    return -1;
+                }
+
                 return dictionary.Aggregate((l, r) => l.Value.AverageCommonKeypoints > r.Value.AverageCommonKeypoints ? l : r).Key;
             }
         }
@@ -252,21 +288,27 @@ namespace facerecognition
             var dictionary = new Dictionary<int, Person>();
 
             //var orb = new ORBDetector(500);
-            //var surf = new SURFDetector(500, true);
-            var brisk = new Brisk(1, 3, 1.0f);
-            //var fast = new FastDetector(1, true);
+            //var surf = new SURFDetector(25, true);
+            //var brisk = new Brisk(30, 3, 1.0f);
+            var fast = new FastDetector(5, true);
             //var freak = new Freak(true, true, 22.0f, 3);
-            //var brief = new BriefDescriptorExtractor();
+            var brief = new BriefDescriptorExtractor();
 
-            var observedKeypoints = brisk.DetectKeyPointsRaw(observedImage, null);
-            var observedDescriptors = brisk.ComputeDescriptorsRaw(observedImage, null, observedKeypoints);
+            var observedKeypoints = fast.DetectKeyPointsRaw(observedImage, null);
+            var observedDescriptors = brief.ComputeDescriptorsRaw(observedImage, null, observedKeypoints);
 
             foreach (var subjectId in db.Keys)
             {
+                var nbCommonRejected = 0;
                 var models = db[subjectId].models;
 
                 foreach (var model in models)
                 {
+                    /*
+                    if (model.modelId == Convert.ToInt32(Path.GetFileName(filePath).Split('_')[1]) && subjectId == Convert.ToInt32(Path.GetFileName(filePath).Split('_')[0]))
+                    {
+                        continue;
+                    }*/
                     Matrix<int> indices;
                     Matrix<byte> mask;
 
@@ -274,31 +316,76 @@ namespace facerecognition
                     BruteForceMatcher<byte> matcher = new BruteForceMatcher<byte>(DistanceType.Hamming);
                     matcher.Add(model.descriptors);
 
-                    indices = new Matrix<int>(observedDescriptors.Rows, 10);
-                    using (Matrix<float> dist = new Matrix<float>(observedDescriptors.Rows, 10))
-                    {
-                        matcher.KnnMatch(observedDescriptors, indices, dist, 10, null);
-                        mask = new Matrix<byte>(dist.Rows, 1);
-                        mask.SetValue(255);
-                        Features2DToolbox.VoteForUniqueness(dist, 0.7, mask);
-                    }
+                    indices = new Matrix<int>(observedDescriptors.Rows, 5);
+                    Matrix<float> dist = new Matrix<float>(observedDescriptors.Rows, 5);
+                 
+                    matcher.KnnMatch(observedDescriptors, indices, dist, 5, null);
+                    mask = new Matrix<byte>(dist.Rows, 1);
+                    mask.SetValue(255);
+                    Features2DToolbox.VoteForUniqueness(dist, 0.8, mask);
+                    
 
                     var kpModel = new VectorOfKeyPoint();
                     kpModel.Push(model.keypoints);
                     int numOfKeypoints = CvInvoke.cvCountNonZero(mask);
                     if (numOfKeypoints > 0)
                     {
-                        //numOfKeypoints = Features2DToolbox.VoteForSizeAndOrientation(kpModel, observedKeypoints, indices, mask, 1.5, 20);
+                        numOfKeypoints = Features2DToolbox.VoteForSizeAndOrientation(kpModel, observedKeypoints, indices, mask, 1.5, 10);
                     }
+
+                    //Vote for dist
+                    /*
+                    for (int i = 0; i < mask.Rows; ++i)
+                    {
+                        if (dist[i,0] > 30)
+                        {
+                            mask[i, 0] = 0;
+                        }
+                    }*/
+
+                    /*
+                    //Vote for no-common keypoints
+                    for (int i = 0; i < observedKeypoints.Size; ++i)
+                    {
+                        if (mask[i, 0] == 255)
+                        {
+                            var crossOver = model.numberOfCrossTestHits[indices[i, 0]];
+                            if (crossOver > 0)
+                            {
+                                nbCommonRejected += crossOver;
+                                mask[i, 0] = 0;
+                            }
+                            //Console.WriteLine(model.numberOfCrossTestHits[indices[i, 0]]);
+                            //numOfKeypoints += 5 - model.numberOfCrossTestHits[indices[i, 0]];
+                        }
+                    }*/
+
+                    //var homography = Features2DToolbox.GetHomographyMatrixFromMatchedFeatures(kpModel, observedKeypoints, indices, mask, 2);
+                    
+
+                    //Total dist
+                    float totalDist = 0;
+                    int nbElems = 0;
+                    for (int i = 0; i < mask.Rows; ++i)
+                    {
+                        if (mask[i,0] > 0)
+                        {
+                            totalDist += dist[i,0];
+                            nbElems++;
+                        }
+                    }
+
+                    numOfKeypoints = CvInvoke.cvCountNonZero(mask);
 
                     if (!dictionary.ContainsKey(subjectId))
                     {
                         dictionary.Add(subjectId, new Person(subjectId));
                     }
 
-                    dictionary[subjectId].AddComparison(numOfKeypoints);
+                    dictionary[subjectId].AddComparison((int)(totalDist / nbElems));
                 }
             }
+
 
             return dictionary.Aggregate((l, r) => l.Value.AverageCommonKeypoints > r.Value.AverageCommonKeypoints ? l : r).Key;
         }
@@ -315,11 +402,21 @@ namespace facerecognition
             foreach (var file in Directory.GetFiles(dbPathIn).Where(f => f.EndsWith(".gif") || f.EndsWith(".GIF") || f.EndsWith(".bmp") || f.EndsWith(".BMP") || f.EndsWith(".jpg") || f.EndsWith(".JPG") || f.EndsWith(".PNG") || f.EndsWith(".png")))
             {
                 var fileName = Path.GetFileName(file);
-                var image = TransformPicture(file);
+                var image = TransformPicture(new Bitmap(file));
 
                 var newFilePath = Path.Combine(dbPathOut, fileName);
                 image.Save(newFilePath);
             }
+        }
+
+        public static Bitmap CheckUnknowImageSize(Bitmap unknownImage)
+        {
+            if (unknownImage.Width != DB_PICTURE_WIDTH)
+            {
+                unknownImage = new Bitmap(unknownImage, DB_PICTURE_WIDTH, DB_PICTURE_HEIGHT);
+            }
+
+            return unknownImage;
         }
 
         /// <summary>
