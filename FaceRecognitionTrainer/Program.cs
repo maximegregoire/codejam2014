@@ -263,32 +263,33 @@ namespace FaceRecognitionTrainer
 
             var termCrit = new MCvTermCriteria(imgs.Count, 0.001);
 
-            var eigen = new EigenObjectRecognizer(imgs.ToArray(), labels.ToArray(), 5000, ref termCrit);
+            var eigen = new EigenObjectRecognizer(imgs.ToArray(), labels.ToArray(), 4000, ref termCrit);
 
             foreach (var file in Directory.GetFiles(photoPath, "*.bmp"))
             {
                 FindFaceMultiScale(trainingPath, file, eigen);
             }
-        }
+       }
 
         static void FindFaceMultiScale(string trainingPath, string observedImagePath, EigenObjectRecognizer eigen)
         {
-            int currentScale = 0;
-            double[] scales = {1, 0.95, 0.9, 0.85, 0.8, 0.75, 0.7, 0.65, 0.6, 0.55, 0.5};
+            double currentScale = 0.4f;
+            //double[] scales = {1, 0.95, 0.9, 0.85, 0.8, 0.75, 0.7, 0.65, 0.6, 0.55, 0.5};
 
             //Find the face in test picture
             var observedImage = new Image<Gray, byte>(observedImagePath);
             
 
-            while (currentScale < scales.Length)
+            while (currentScale <= 1)
             {
-                var scaledObservedImage = observedImage.Resize(scales[currentScale], Emgu.CV.CvEnum.INTER.CV_INTER_LINEAR);
+                var scaledObservedImage = observedImage.Resize(currentScale, Emgu.CV.CvEnum.INTER.CV_INTER_LINEAR);
                 var faceRect = FindFace(scaledObservedImage, eigen);
 
                 if (faceRect != Rectangle.Empty)
                 {
+                    scaledObservedImage.ROI = faceRect;
                     var realImage = new Image<Bgr, int>(observedImagePath);
-                    realImage = realImage.Resize(scales[currentScale], Emgu.CV.CvEnum.INTER.CV_INTER_NN);
+                    realImage = realImage.Resize(currentScale, Emgu.CV.CvEnum.INTER.CV_INTER_NN);
                     realImage.Draw(faceRect, new Bgr(Color.Blue), 1);
                     realImage.Save(@"output\" + Path.GetFileName(observedImagePath));
 
@@ -302,7 +303,7 @@ namespace FaceRecognitionTrainer
                 }
                 else
                 {
-                    currentScale++;
+                    currentScale += 0.025;
                 }
             }
 
@@ -328,7 +329,7 @@ namespace FaceRecognitionTrainer
 
             bool matchFound = false;
 
-            //var foundSpots = new List<KeyValuePair<EigenObjectRecognizer.RecognitionResult, KeyValuePair<int, int>>>();
+            var foundSpots = new List<KeyValuePair<EigenObjectRecognizer.RecognitionResult, KeyValuePair<int, int>>>();
 
             while (scanRect.Y < imageHeight - 180)
             {
@@ -346,7 +347,7 @@ namespace FaceRecognitionTrainer
                         if (scanRect.X > maxX) maxX = scanRect.X;
                         if (scanRect.Y > maxY) maxY = scanRect.Y;
                         matchFound = true;
-                        //foundSpots.Add(new KeyValuePair<EigenObjectRecognizer.RecognitionResult, KeyValuePair<int, int>>(match, new KeyValuePair<int, int>(scanRect.X, scanRect.Y)));
+                        foundSpots.Add(new KeyValuePair<EigenObjectRecognizer.RecognitionResult, KeyValuePair<int, int>>(match, new KeyValuePair<int, int>(scanRect.X, scanRect.Y)));
                     }
 
                     scanRect.X += 4;
@@ -357,11 +358,13 @@ namespace FaceRecognitionTrainer
             }
 
 
-            //var hehe = foundSpots.OrderBy(s => s.Key.Distance).ToArray();
+            var hehe = foundSpots.OrderBy(s => s.Key.Distance).ToArray();
 
             if (matchFound)
             {
-                return new Rectangle(minX, minY, maxX + 130 - minX, maxY + 180 - minY);
+                var faceRect = new Rectangle(minX, minY, maxX + 130 - minX, maxY + 180 - minY);
+                if (faceRect.Width < 140) return faceRect;
+                //return faceRect;
             }
 
             return Rectangle.Empty;
