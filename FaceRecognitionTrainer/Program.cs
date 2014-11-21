@@ -263,7 +263,7 @@ namespace FaceRecognitionTrainer
 
             var termCrit = new MCvTermCriteria(imgs.Count, 0.001);
 
-            var eigen = new EigenObjectRecognizer(imgs.ToArray(), labels.ToArray(), 4000, ref termCrit);
+            var eigen = new EigenObjectRecognizer(imgs.ToArray(), labels.ToArray(), 5000, ref termCrit);
 
             foreach (var file in Directory.GetFiles(photoPath, "*.bmp"))
             {
@@ -303,7 +303,7 @@ namespace FaceRecognitionTrainer
                 }
                 else
                 {
-                    currentScale += 0.025;
+                    currentScale += 0.05;
                 }
             }
 
@@ -350,10 +350,10 @@ namespace FaceRecognitionTrainer
                         foundSpots.Add(new KeyValuePair<EigenObjectRecognizer.RecognitionResult, KeyValuePair<int, int>>(match, new KeyValuePair<int, int>(scanRect.X, scanRect.Y)));
                     }
 
-                    scanRect.X += 4;
+                    scanRect.X += 2;
                 }
 
-                scanRect.Y += 4;
+                scanRect.Y += 2;
                 scanRect.X = 0;
             }
 
