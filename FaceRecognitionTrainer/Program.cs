@@ -1,7 +1,7 @@
 ﻿using Emgu.CV;
+using Emgu.CV.Util;
 using Emgu.CV.Features2D;
 using Emgu.CV.Structure;
-using Emgu.CV.Util;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -11,6 +11,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 using Database;
+using System.Diagnostics;
 
 namespace FaceRecognitionTrainer
 {
@@ -30,6 +31,7 @@ namespace FaceRecognitionTrainer
             if (args.Length >= 2) markedInputFolder = args[1];
             if (args.Length >= 3) outputFolder = args[2];
 
+            /*
             var database = ProcessImages(plainInputFolder, markedInputFolder, outputFolder);
             Serializer.WriteDatabase(outputFolder, database);
 
@@ -37,14 +39,25 @@ namespace FaceRecognitionTrainer
             {
                 var identification = Match(file, database);
                 Console.WriteLine(Path.GetFileName(file) + " " + identification);
-            }
+            }*/
+
+            /*
+            var surf = new FastDetector(1, true);
+            var brief = new BriefDescriptorExtractor();
+            var ct = new SubjectCrossTester<byte>(plainInputFolder, 2, surf, brief, DistanceType.Hamming);
+            Serializer.WriteModelData(outputFolder, ct.DoCrossTestForSubject<byte>(1));
+            Serializer.WriteModelData(outputFolder, ct.DoCrossTestForSubject<byte>(2));
+             * */
+
+            DoEigenTest("eigen_training_set", "photos");
+            //DoEigen("eigen_training_set", @"photos\1_10.bmp");
         }
 
-        static Dictionary<int, SubjectModelDataCollection<byte>> ProcessImages(string plainInputFolder, string markedInputFolder, string outputFolder)
+        static Dictionary<int, SubjectModelDataCollection<float>> ProcessImages(string plainInputFolder, string markedInputFolder, string outputFolder)
         {
             Directory.CreateDirectory(outputFolder);
 
-            var database = new Dictionary<int, SubjectModelDataCollection<byte>>();
+            var database = new Dictionary<int, SubjectModelDataCollection<float>>();
 
             foreach (var fileNameWithoutExt in Directory.GetFiles(plainInputFolder, "*.bmp").Select(f => Path.GetFileNameWithoutExtension(f)))
             {
@@ -71,29 +84,31 @@ namespace FaceRecognitionTrainer
 
                 //var fast = new FastDetector(1, true);
                 //var orb = new ORBDetector(500);
-                var brisk = new Brisk(1, 3, 1.0f);
-                //var surf = new SURFDetector(500, true);
-                var keypoints = brisk.DetectKeyPointsRaw(plainImage, mask);
+                //var brisk = new Brisk(1, 3, 1.0f);
+                var surf = new SURFDetector(100, true);
+                var keypoints = surf.DetectKeyPointsRaw(plainImage, mask);
 
                 //For debugging purposes, draw the keypoints to an actual image and save it
                 var o = Features2DToolbox.DrawKeypoints(plainImage, keypoints, new Bgr(Color.Blue), Features2DToolbox.KeypointDrawType.DRAW_RICH_KEYPOINTS);
                 o.Save(outputKeypointImage);
 
                 //Get descriptors
-                //var freak = new Freak(true, true, 22.0f, 3);
+                var freak = new Freak(true, true, 22.0f, 3);
                 var brief = new BriefDescriptorExtractor();
-                var descriptors = brisk.ComputeDescriptorsRaw(plainImage, null, keypoints);
+                var descriptors = surf.ComputeDescriptorsRaw(plainImage, null, keypoints);
 
                 //Add the gathered data to the database
                 int subjectId = Convert.ToInt32(fileNameWithoutExt.Split('_')[0]);
+                int modelId = Convert.ToInt32(fileNameWithoutExt.Split('_')[1]);
 
-                if (!database.ContainsKey(subjectId)) database.Add(subjectId, new SubjectModelDataCollection<byte>()
+                if (!database.ContainsKey(subjectId)) database.Add(subjectId, new SubjectModelDataCollection<float>()
                     {
-                        subjectId = subjectId, models = new List<ModelData<byte>>()
+                        subjectId = subjectId,
+                        models = new List<ModelData<float>>()
                     }
                 );
 
-                database[subjectId].models.Add(new ModelData<byte> { keypoints = keypoints.ToArray(), descriptors = descriptors });
+                database[subjectId].models.Add(new ModelData<float> { keypoints = keypoints.ToArray(), descriptors = descriptors, modelId = modelId });
             }
 
             return database;
@@ -155,21 +170,21 @@ namespace FaceRecognitionTrainer
             return mask;
         }
 
-        static int Match(string fileName, Dictionary<int, SubjectModelDataCollection<byte>> database)
+        static int Match(string fileName, Dictionary<int, SubjectModelDataCollection<float>> database)
         {
             var observedImage = new Image<Gray, byte>(fileName);
 
-            //var fast = new FastDetector(1, true);
+            var fast = new FastDetector(5, true);
             //var orb = new ORBDetector(500);
-            //var surf = new SURFDetector(500, true);
-            var brisk = new Brisk(1, 3, 1.0f);
+            var surf = new SURFDetector(100, true);
+            //var brisk = new Brisk(1, 3, 1.0f);
             //var freak = new Freak(true, true, 22.0f, 1);
             //var brief = new BriefDescriptorExtractor();
 
-            var kpObserved = brisk.DetectKeyPointsRaw(observedImage, null);
-            var descObserved = brisk.ComputeDescriptorsRaw(observedImage, null, kpObserved);
+            var observedKeypoints = surf.DetectKeyPointsRaw(observedImage, null);
+            var observedDescriptors = surf.ComputeDescriptorsRaw(observedImage, null, observedKeypoints);
 
-            Features2DToolbox.DrawKeypoints(observedImage, kpObserved, new Bgr(Color.Blue), Features2DToolbox.KeypointDrawType.DRAW_RICH_KEYPOINTS).Save("img.bmp");
+            Features2DToolbox.DrawKeypoints(observedImage, observedKeypoints, new Bgr(Color.Blue), Features2DToolbox.KeypointDrawType.DRAW_RICH_KEYPOINTS).Save("img.bmp");
 
             foreach (var subjectId in database.Keys)
             {
@@ -185,16 +200,29 @@ namespace FaceRecognitionTrainer
                     Matrix<byte> mask;
 
                     //Try to match the features
-                    BruteForceMatcher<byte> matcher = new BruteForceMatcher<byte>(DistanceType.Hamming);
+                    BruteForceMatcher<float> matcher = new BruteForceMatcher<float>(DistanceType.L2);
                     matcher.Add(model.descriptors);
 
-                    indices = new Matrix<int>(descObserved.Rows, 10);
-                    using (Matrix<float> dist = new Matrix<float>(descObserved.Rows, 10))
+                    indices = new Matrix<int>(observedDescriptors.Rows, 10);
+                    using (Matrix<float> dist = new Matrix<float>(observedDescriptors.Rows, 10))
                     {
-                        matcher.KnnMatch(descObserved, indices, dist, 10, null);
+                        matcher.KnnMatch(observedDescriptors, indices, dist, 10, null);
                         mask = new Matrix<byte>(dist.Rows, 1);
                         mask.SetValue(255);
-                        Features2DToolbox.VoteForUniqueness(dist, 0.7, mask);
+                        Features2DToolbox.VoteForUniqueness(dist, 0.8, mask);
+
+                        var d = new List<float>();
+                        //Vote for distance low enough
+                        for (int i=0; i<mask.Rows; ++i)
+                        {
+                            d.Add(dist[i, 0]);
+                            if (dist[i, 0] > 0.35)
+                            {
+                                mask[i, 0] = 0;
+                            }
+                        }
+
+                        var d2 = d.OrderBy(dis => dis).ToArray();
                     }
                     
                     var kpModel = new VectorOfKeyPoint();
@@ -202,7 +230,7 @@ namespace FaceRecognitionTrainer
                     int numOfKeypoints = CvInvoke.cvCountNonZero(mask);
                     if (numOfKeypoints > 0)
                     {
-                        numOfKeypoints = Features2DToolbox.VoteForSizeAndOrientation(kpModel, kpObserved, indices, mask, 1.5, 10);
+                        numOfKeypoints = Features2DToolbox.VoteForSizeAndOrientation(kpModel, observedKeypoints, indices, mask, 1.5, 10);
                     }
 
                     sum += numOfKeypoints;
@@ -216,5 +244,202 @@ namespace FaceRecognitionTrainer
 
             return 0;
         }
+
+        static void DoEigenTest(string trainingPath, string photoPath)
+        {
+            var imgs = new List<Image<Gray, byte>>();
+            var labels = new List<string>();
+
+            foreach (var file in Directory.GetFiles(trainingPath, "*.bmp"))
+            {
+                var label = Path.GetFileName(file).Split('_')[0];
+                var img = new Image<Gray, byte>(file);
+                var channel0 = img[0];
+                channel0._EqualizeHist();
+                img[0] = channel0;
+                imgs.Add(img);
+                labels.Add(label);
+            }
+
+            var termCrit = new MCvTermCriteria(imgs.Count, 0.001);
+
+            var eigen = new EigenObjectRecognizer(imgs.ToArray(), labels.ToArray(), 5000, ref termCrit);
+
+            foreach (var file in Directory.GetFiles(photoPath, "*.bmp"))
+            {
+                FindFaceMultiScale(trainingPath, file, eigen);
+            }
+        }
+
+        static void FindFaceMultiScale(string trainingPath, string observedImagePath, EigenObjectRecognizer eigen)
+        {
+            int currentScale = 0;
+            double[] scales = {1, 0.95, 0.9, 0.85, 0.8, 0.75, 0.7, 0.65, 0.6, 0.55, 0.5};
+
+            //Find the face in test picture
+            var observedImage = new Image<Gray, byte>(observedImagePath);
+            
+
+            while (currentScale < scales.Length)
+            {
+                var scaledObservedImage = observedImage.Resize(scales[currentScale], Emgu.CV.CvEnum.INTER.CV_INTER_LINEAR);
+                var faceRect = FindFace(scaledObservedImage, eigen);
+
+                if (faceRect != Rectangle.Empty)
+                {
+                    var realImage = new Image<Bgr, int>(observedImagePath);
+                    realImage = realImage.Resize(scales[currentScale], Emgu.CV.CvEnum.INTER.CV_INTER_NN);
+                    realImage.Draw(faceRect, new Bgr(Color.Blue), 1);
+                    realImage.Save(@"output\" + Path.GetFileName(observedImagePath));
+
+                    var fast = new FastDetector(5, true);
+                    var brief = new BriefDescriptorExtractor();
+
+                    int result = MatchFace(scaledObservedImage, trainingPath, fast, brief, DistanceType.Hamming);
+                    Console.WriteLine("{0}  ==> {1}", observedImagePath, result);
+
+                    return;
+                }
+                else
+                {
+                    currentScale++;
+                }
+            }
+
+            Console.WriteLine("Match not found");
+            
+        }
+
+        static Rectangle FindFace(Image<Gray, Byte> observedImage, EigenObjectRecognizer eigen)
+        {
+            //Equalize histogram
+            var c1 = observedImage[0];
+            c1._EqualizeHist();
+            observedImage[0] = c1;
+
+            var scanRect = new Rectangle(0, 0, 130, 180);
+
+            var imageHeight = observedImage.Height;
+            var imageWidth = observedImage.Width;
+
+            int minX, maxX, minY, maxY;
+            minX = minY = Int32.MaxValue;
+            maxX = maxY = 0;
+
+            bool matchFound = false;
+
+            //var foundSpots = new List<KeyValuePair<EigenObjectRecognizer.RecognitionResult, KeyValuePair<int, int>>>();
+
+            while (scanRect.Y < imageHeight - 180)
+            {
+                while (scanRect.X < imageWidth - 130)
+                {
+                    observedImage.ROI = scanRect;
+
+                    //Try to recognize it
+                    var match = eigen.Recognize(observedImage);
+
+                    if (match != null)
+                    {
+                        if (scanRect.X < minX) minX = scanRect.X;
+                        if (scanRect.Y < minY) minY = scanRect.Y;
+                        if (scanRect.X > maxX) maxX = scanRect.X;
+                        if (scanRect.Y > maxY) maxY = scanRect.Y;
+                        matchFound = true;
+                        //foundSpots.Add(new KeyValuePair<EigenObjectRecognizer.RecognitionResult, KeyValuePair<int, int>>(match, new KeyValuePair<int, int>(scanRect.X, scanRect.Y)));
+                    }
+
+                    scanRect.X += 4;
+                }
+
+                scanRect.Y += 4;
+                scanRect.X = 0;
+            }
+
+
+            //var hehe = foundSpots.OrderBy(s => s.Key.Distance).ToArray();
+
+            if (matchFound)
+            {
+                return new Rectangle(minX, minY, maxX + 130 - minX, maxY + 180 - minY);
+            }
+
+            return Rectangle.Empty;
+        }
+
+        static List<string> GetPhotosForSubject(int subjectId, string folder)
+        {
+            var subjectPhotos = new List<string>();
+            foreach (var file in Directory.GetFiles(folder, subjectId.ToString() + "_*.bmp"))
+            {
+                subjectPhotos.Add(file);
+            }
+
+            return subjectPhotos;
+        }
+
+        static int MatchFace<TDepth>(Image<Gray, byte> imageToMatch, string trainingDataset, IKeyPointDetector kp, IDescriptorExtractor<Gray, TDepth> de, DistanceType dt) where TDepth : struct
+        {
+
+            var observedKeypoints = kp.DetectKeyPointsRaw(imageToMatch, null);
+            var observedDescriptors = de.ComputeDescriptorsRaw(imageToMatch, null, observedKeypoints);
+
+            var dictionary = new Dictionary<int, Person>();
+
+            foreach (var file in Directory.GetFiles(trainingDataset, "*.bmp"))
+            {
+                var subjectId = Convert.ToInt32(Path.GetFileName(file).Split('_')[0]);
+                var modelImage = new Image<Gray, byte>(file);
+
+                var modelKeypoints = kp.DetectKeyPointsRaw(modelImage, null);
+                var modelDescriptors = de.ComputeDescriptorsRaw(modelImage, null, modelKeypoints);
+
+                Matrix<int> indices;
+                Matrix<byte> mask;
+
+                //Try to match the features
+                BruteForceMatcher<TDepth> matcher = new BruteForceMatcher<TDepth>(dt);
+                matcher.Add(modelDescriptors);
+
+                indices = new Matrix<int>(observedDescriptors.Rows, 5);
+                using (Matrix<float> dist = new Matrix<float>(observedDescriptors.Rows, 5))
+                {
+                    matcher.KnnMatch(observedDescriptors, indices, dist, 5, null);
+                    mask = new Matrix<byte>(dist.Rows, 1);
+                    mask.SetValue(255);
+                    Features2DToolbox.VoteForUniqueness(dist, 0.8, mask);
+                }
+
+                int numOfKeypoints = CvInvoke.cvCountNonZero(mask);
+                if (numOfKeypoints > 0)
+                {
+                    numOfKeypoints = Features2DToolbox.VoteForSizeAndOrientation(modelKeypoints, observedKeypoints, indices, mask, 1.5, 10);
+                }
+
+                if (!dictionary.ContainsKey(subjectId))
+                {
+                    dictionary.Add(subjectId, new Person(subjectId));
+                }
+
+                dictionary[subjectId].AddComparison((int)(numOfKeypoints));
+            }
+
+            return dictionary.Aggregate((l, r) => l.Value.AverageCommonKeypoints > r.Value.AverageCommonKeypoints ? l : r).Key;
+
+        }
+
+        static Image<Gray, Single> ComputeCorrelation(Single[] w, Image<Gray, Single>[] u)
+        {
+            var result = new Image<Gray, Single>(u[0].Width, u[0].Height, new Gray(0));
+
+            for (int i = 0; i < w.Length; ++i)
+            {
+                result = result.AddWeighted(u[i], 1.0f, w[0], 0);
+            }
+
+            return result;
+        }
     }
+
+
 }
